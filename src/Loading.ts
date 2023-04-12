@@ -1,0 +1,49 @@
+const { regClass } = Laya;
+import { LoadingBase } from "./Loading.generated";
+
+const resources = [
+    "resources/tmw_desert_spacing.png",
+    "resources/map/house.png"
+];
+
+@regClass()
+export class Loading extends LoadingBase {
+    onAwake(): void {
+        Laya.loader.load(
+            //加载首屏图片
+            [
+                "atlas/comp/progress.png",
+                "atlas/comp/progress$bar.png"
+            ]
+        ).then(() => {
+            Laya.loader.load(resources, null, Laya.Handler.create(this, this.onLoading, null, false)).then(() => {
+                // 加载完成后，处理逻辑
+                this.progress.value = 0.98;
+                //预加载的东西太少，为了本地看效果延迟一秒，真实项目不需要延迟
+                Laya.timer.once(1000, this, () => {
+                    //跳转到入口场景
+                    Laya.Scene.open("scenes/Index.ls"); //不要使用Laya.Scene.open("./Scenes/Index.ls");
+                });
+            });
+            // 侦听加载失败
+            Laya.loader.on(Laya.Event.ERROR, this, this.onError);
+        });
+    }
+
+    /**
+   * 当报错时打印错误
+   * @param err 报错信息
+   */
+    onError(err: string): void {
+        console.log("加载失败: " + err);
+    }
+
+    /**
+     * 加载时侦听
+     */
+    onLoading(progress: number): void {
+        //接近完成加载时，让显示进度比实际进度慢一点，这是为打开场景时的自动加载预留，尤其是要打开的场景资源多，并没有完全放到预加载中，还需要再自动加载一部分时。
+        if (progress > 0.92) this.progress.value = 0.95;
+        else this.progress.value = progress;
+    }
+}

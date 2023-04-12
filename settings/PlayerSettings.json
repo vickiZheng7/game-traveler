@@ -1,0 +1,19 @@
+{
+  "resolution": {
+    "backgroundColor": "rgba(247, 220, 158, 1)"
+  },
+  "3D": {
+    "lightClusterCount": {
+      "x": 12,
+      "y": 12,
+      "z": 12
+    }
+  },
+  "modules": {
+    "laya.d3": true,
+    "laya.ui": true
+  },
+  "splash": {
+    "fit": "center"
+  }
+}
