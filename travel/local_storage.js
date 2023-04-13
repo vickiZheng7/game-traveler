@@ -31,3 +31,28 @@ const age = LocalStorageManager.get('age');
 // 删除数据
 LocalStorageManager.remove('age');
 */ 
+
+
+function saveLastMap(userId, mapData) {
+    LocalStorageManager.set(userId, mapData);
+}
+
+function clearLastMap(userId) {
+    return LocalStorageManager.remove(userId);
+}
+
+function getLastMap(userId) {
+    // 检查是否有未完成的游戏
+    const lastMap = LocalStorageManager.get(userId);
+    if (lastMap !== null) {
+        const shouldContinue = confirm(`是否继续上次游戏内容？`);
+        if (shouldContinue) {
+            // 跳转到上次游戏的关卡
+            return lastMap
+        } else {
+            // 清除上次游戏的记录
+            clearLastMap(userId);
+        }
+    }
+    return null
+}
