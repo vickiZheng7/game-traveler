@@ -1,5 +1,5 @@
-import { mapBuilder } from "./MapBuilder";
 import Texture = Laya.Texture;
+import MapAction from "./MapAction";
 const { regClass, property } = Laya;
 
 interface IData {
@@ -38,6 +38,8 @@ export class MapPanel extends Laya.Panel {
     // 建筑物数据
     public building: Record<number, IMapPoint> = {};
 
+    public mapInfo: MapAction = null;
+
     constructor(width: number, height: number) {
         super();
         this.width = width;
@@ -54,7 +56,8 @@ export class MapPanel extends Laya.Panel {
 
     generate(): void {
         // 1. 初始化数据
-        const { point, map } = mapBuilder();
+        this.mapInfo = new MapAction();
+        const { point, map } = this.mapInfo;
         this.data = { building: point, relation: map };
         this.initMap();
         // 2. 绘制地图
