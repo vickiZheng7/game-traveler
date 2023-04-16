@@ -1,6 +1,24 @@
 (() => {
   var __defProp = Object.defineProperty;
+  var __defProps = Object.defineProperties;
   var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+  var __getOwnPropDescs = Object.getOwnPropertyDescriptors;
+  var __getOwnPropSymbols = Object.getOwnPropertySymbols;
+  var __hasOwnProp = Object.prototype.hasOwnProperty;
+  var __propIsEnum = Object.prototype.propertyIsEnumerable;
+  var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+  var __spreadValues = (a, b) => {
+    for (var prop in b ||= {})
+      if (__hasOwnProp.call(b, prop))
+        __defNormalProp(a, prop, b[prop]);
+    if (__getOwnPropSymbols)
+      for (var prop of __getOwnPropSymbols(b)) {
+        if (__propIsEnum.call(b, prop))
+          __defNormalProp(a, prop, b[prop]);
+      }
+    return a;
+  };
+  var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
   var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
   var __decorateClass = (decorators, target, key, kind) => {
     var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc(target, key) : target;
@@ -247,6 +265,76 @@
   }
   __name(mapBuilder, "mapBuilder");
 
+  // src/ui/MapAction.ts
+  var MapAction = class {
+    constructor() {
+      this.position = 0;
+      this.lastPoint = 0;
+      this.map = {};
+      this.pointEvent = [];
+      this.eventList = [];
+      this.eventFlag = {};
+      this.point = [];
+      this.endPoint = 0;
+      this.isFinish = false;
+      this.showRoad = /* @__PURE__ */ __name((position) => {
+        const roadList = this.map[position];
+        console.log("showRoad", position, roadList);
+      }, "showRoad");
+      this.meetEvent = /* @__PURE__ */ __name((position) => {
+        let event = this.pointEvent[position];
+        console.log("event", position, event);
+        if (event.type == 1) {
+          this.eventList.push(event);
+        }
+        if (event.type == 0) {
+          this.lastPoint += event.value;
+        }
+        if (event.type == 2) {
+          this.positionChange(event.target);
+        }
+      }, "meetEvent");
+      this.positionChange = /* @__PURE__ */ __name((newPosition) => {
+        let value = this.map[this.position][newPosition];
+        for (let i = 0; i < this.eventList.length; i++) {
+          let event = this.eventList[i];
+          if (event.value == 0) {
+            value = 0;
+          } else {
+            value += event.value;
+          }
+          if (event.path === 0) {
+            this.eventList.splice(i, 1);
+            i--;
+          }
+        }
+        this.lastPoint -= value;
+        console.log("\u5269\u4F59\u70B9\u6570", this.lastPoint);
+        if (this.lastPoint <= 0) {
+          console.log("\u6E38\u620F\u7ED3\u675F\uFF0C\u65C5\u9014\u5931\u8D25");
+          this.isFinish = true;
+          return;
+        }
+        this.position = newPosition;
+        if (this.position == this.endPoint) {
+          console.log("\u6E38\u620F\u7ED3\u675F\uFF0C\u987A\u5229\u901A\u5173");
+          this.isFinish = true;
+          return;
+        }
+        this.meetEvent(this.position);
+        this.showRoad(this.position);
+      }, "positionChange");
+      const { map, defaultValue, point, pointEvent, endPoint } = mapBuilder();
+      this.lastPoint = defaultValue;
+      this.map = map;
+      this.point = point;
+      this.pointEvent = pointEvent;
+      this.endPoint = endPoint;
+      this.showRoad(this.position);
+    }
+  };
+  __name(MapAction, "MapAction");
+
   // src/ui/MapPanel.ts
   var Texture = Laya.Texture;
   var { regClass, property } = Laya;
@@ -264,10 +352,22 @@
       // 地图数据
       this.map = [];
       // 建筑物数据
-      this.building = {};
+      this.buildingMapper = {};
+      // 原始地图数据
+      this.mapInfo = null;
+      // sprite
+      this.roadSprite = new Laya.Sprite();
+      this.highLightRoadSprite = new Laya.Sprite();
+      this.buildingSprite = new Laya.Sprite();
       this.width = width;
       this.height = height;
       this.initGrid();
+      this.addChild(this.roadSprite);
+      this.roadSprite.pos(0, 0);
+      this.addChild(this.highLightRoadSprite);
+      this.highLightRoadSprite.pos(0, 0);
+      this.addChild(this.buildingSprite);
+      this.buildingSprite.pos(0, 0);
     }
     initGrid(rowHeight = 40, columnWidth = 40) {
       this.gridColumnWidth = columnWidth;
@@ -276,20 +376,20 @@
       this.gridColumns = Math.floor(this.width / this.gridColumnWidth);
     }
     generate() {
-      const { point, map } = mapBuilder();
-      this.data = { building: point, relation: map };
+      this.mapInfo = new MapAction();
       this.initMap();
       this.drawMap();
     }
     initMap() {
-      const { building, relation } = this.data;
+      const { point: building, map: relation } = this.mapInfo;
+      this.buildingMapper = {};
       this.map = [];
       for (let i = 0; i < this.gridRows; i++) {
         this.map.push(new Array(this.gridColumns).fill(null));
       }
       const firstBuilding = { id: 0, x: 0, y: 0 };
       this.map[0][0] = firstBuilding;
-      this.building[firstBuilding.id] = firstBuilding;
+      this.buildingMapper[firstBuilding.id] = firstBuilding;
       let nextX = 2;
       for (let column = 1; column < building.length; column++) {
         const curX = this.getRandom(nextX, this.gridColumns - (building.length - column - 1) * 2 - 1);
@@ -298,70 +398,155 @@
           const curY = this.getRandom(nextY, this.gridRows - (building[column].length - row - 1) * 2 - 1);
           const curBuilding = { id: building[column][row], x: curX, y: curY };
           this.map[curY][curX] = curBuilding;
+          this.buildingMapper[curBuilding.id] = curBuilding;
           nextY = curY + 2;
         }
         nextX = curX + 2;
       }
       for (let source in relation) {
         for (let target in relation[source]) {
-          if (!this.building[source]) {
-            return;
+          if (!this.buildingMapper[source]) {
+            continue;
           }
-          if (!this.building[source].targets) {
-            this.building[source].targets = {};
+          if (!this.buildingMapper[source].targets) {
+            this.buildingMapper[source].targets = {};
           }
-          this.building[source].targets[target] = {
-            cost: parseInt(relation[source][target]),
-            points: this.getRoadPoints(this.building[source], this.building[target])
-          };
+          const points = this.getRoadPoints(this.buildingMapper[source], this.buildingMapper[target]);
+          if (points.length) {
+            this.buildingMapper[source].targets[target] = {
+              cost: parseInt(relation[source][target]),
+              points
+            };
+          }
         }
       }
     }
     drawMap() {
-      var _a;
+      this.drawGround();
+      this.drawRoads();
+      this.drawBuildings();
+    }
+    drawGround() {
+      this.graphics.clear();
       const groundTexture = Texture.create(Laya.loader.getRes("resources/tmw_desert_spacing.png"), 5 * 33 + 1, 3 * 33 + 1, 30, 30);
       this.graphics.fillTexture(groundTexture, 0, 0, this.width, this.height);
-      const building = new Laya.Sprite();
-      this.addChild(building);
+    }
+    drawRoads() {
+      this.roadSprite.graphics.clear();
+      for (let source in this.buildingMapper) {
+        for (let target in this.buildingMapper[source].targets) {
+          const { points } = this.buildingMapper[source].targets[target];
+          this.drawRoad(this.roadSprite, this.buildingMapper[source].targets[target]);
+        }
+      }
+    }
+    drawRoad(sprite, { points }, color = "black", width = 1) {
+      sprite.graphics.drawLines(
+        this.getXPos(points[0].x, "center"),
+        this.getYPos(points[0].y, "center"),
+        points.map((point) => [this.getXPos(point.x - points[0].x), this.getYPos(point.y - points[0].y)]).flat(),
+        color,
+        width
+      );
+    }
+    drawBuildings() {
+      var _a;
+      this.buildingSprite.graphics.clear();
       const houseTexture = Texture.create(Laya.loader.getRes("resources/map/house.png"), 0, 0, 280, 280);
       for (let y = 0; y < this.map.length; y++) {
         for (let x = 0; x < this.map[y].length; x++) {
           if (((_a = this.map[y][x]) == null ? void 0 : _a.id) !== void 0) {
-            building.graphics.drawTexture(houseTexture, this.getXPos(x), this.getYPos(y), this.gridColumnWidth, this.gridRowHeight);
+            this.buildingSprite.graphics.drawTexture(houseTexture, this.getXPos(x), this.getYPos(y), this.gridColumnWidth, this.gridRowHeight);
           }
         }
       }
-      building.pos(0, 0);
+    }
+    highLightRoads(id) {
+      this.highLightRoadSprite.graphics.clear();
+      const building = this.buildingMapper[id];
+      if (!(building == null ? void 0 : building.targets)) {
+        return;
+      }
+      for (let target in building.targets) {
+        this.drawRoad(this.highLightRoadSprite, building.targets[target], "black", 5);
+      }
+    }
+    calcPointValue(start, end) {
+      return Math.abs(start.x - end.x) + Math.abs(start.y - end.y);
     }
     getRoadPoints(start, end) {
+      if (!start || !end) {
+        return [];
+      }
       const directions = [[0, 1], [1, 0], [0, -1], [-1, 0]];
-      const queue = [{ turn: 0, direct: 0, x: start.x, y: start.y }];
+      const queue = [[__spreadProps(__spreadValues({}, start), { turn: 0 })]];
       const visited = /* @__PURE__ */ new Set();
-      const isValidPos = /* @__PURE__ */ __name((pos) => {
-        if (pos.x < 0 || pos.y < 0) {
-          return false;
+      visited.add(`${start.x}-${start.y}`);
+      while (queue.length) {
+        const curPoints = queue[0];
+        const [curPoint] = curPoints;
+        let isEnd = false;
+        const nextPoints = [];
+        for (let i = 0; i < directions.length; i++) {
+          const nextPoint = {
+            x: curPoint.x + directions[i][0],
+            y: curPoint.y + directions[i][1],
+            turn: curPoint.turn || 0
+          };
+          if (nextPoint.x < 0 || nextPoint.y < 0 || nextPoint.x >= this.gridColumns || nextPoint.y >= this.gridRows || visited.has(`${nextPoint.x}-${nextPoint.y}`)) {
+            continue;
+          }
+          if (nextPoint.x === end.x && nextPoint.y === end.y) {
+            isEnd = true;
+            queue.unshift([end]);
+            break;
+          }
+          if (queue[1]) {
+            const [prevPoint] = queue[1];
+            if ((/* @__PURE__ */ new Set([prevPoint.x, curPoint.x, nextPoint.x])).size !== 1 && (/* @__PURE__ */ new Set([prevPoint.y, curPoint.y, nextPoint.y])).size !== 1) {
+              nextPoint.turn++;
+            }
+          }
+          nextPoint.value = this.calcPointValue(start, nextPoint) + this.calcPointValue(end, nextPoint);
+          nextPoints.push(nextPoint);
         }
-        if (pos.x >= this.gridColumnWidth || pos.y >= this.gridRowHeight) {
-          return false;
+        if (isEnd) {
+          break;
         }
-        if (visited.has(`${pos.x}-${pos.y}`)) {
-          return false;
+        if (nextPoints.length) {
+          nextPoints.sort((a, b) => a.value === b.value ? a.turn - b.turn : a.value - b.value);
+          queue.unshift(nextPoints);
+          visited.add(`${nextPoints[0].x}-${nextPoints[0].y}`);
+          continue;
         }
-        return true;
-      }, "isValidPos");
-      return [];
-    }
-    getDistance(a, b) {
-      const x = a.x - b.x, y = a.y - b.y;
-      return Math.sqrt(x * x + y * y);
+        while (queue.length) {
+          queue[0].shift();
+          if (queue[0].length) {
+            const [curPoint2] = queue[0];
+            visited.add(`${curPoint2.x}-${curPoint2.y}`);
+            break;
+          }
+          queue.shift();
+        }
+      }
+      if (!queue.length) {
+        return [];
+      }
+      return queue.reverse().map((points) => points[0]);
     }
     getRandom(n, m) {
       return Math.floor(Math.random() * (m - n + 1) + n);
     }
-    getXPos(x) {
+    getXPos(x, placement) {
+      if (placement === "center") {
+        return (x + 0.5) * this.gridColumnWidth;
+      }
       return x * this.gridColumnWidth;
     }
-    getYPos(y) {
+    getYPos(y, placement) {
+      if (placement === "center") {
+        return (y + 0.5) * this.gridRowHeight;
+      }
       return y * this.gridRowHeight;
     }
   };
