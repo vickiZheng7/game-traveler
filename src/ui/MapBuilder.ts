@@ -263,3 +263,4 @@ export function mapBuilder() {
     // console.log(`初始费用:`, defaultValue);
     return { map, defaultValue, point, pointEvent, endPoint: pointNumber };
 }
+//   mapBuilder();
