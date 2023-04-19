@@ -1,5 +1,6 @@
 import { IndexBase } from "./Index.generated";
 import { MapPanel } from "./ui/MapPanel";
+import Event = Laya.Event;
 
 const { regClass, property } = Laya;
 
@@ -25,6 +26,12 @@ export class Index extends IndexBase {
         this.map = new MapPanel(1136, 640);
         this.map.generate();
         this.addChild(this.map);
+        // 2. 鼠标交互
+        for (let id in this.map.buildingMapper) {
+            this.map.buildingMapper[id].sprite.on(Event.CLICK, () => {
+                this.map.highLightRoads(id);
+            })
+        }
     }
 
     /**

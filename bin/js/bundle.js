@@ -35,6 +35,23 @@
   };
   __name(IndexBase, "IndexBase");
 
+  // src/ui/Building.ts
+  var Texture = Laya.Texture;
+  var { regClass, property } = Laya;
+  var Building = class extends Laya.Sprite {
+    constructor() {
+      super();
+      this.width = 40;
+      this.height = 40;
+      const houseTexture = Texture.create(Laya.loader.getRes("resources/map/house.png"), 0, 0, 280, 280);
+      this.graphics.drawTexture(houseTexture, 0, 0, this.width, this.height);
+    }
+  };
+  __name(Building, "Building");
+  Building = __decorateClass([
+    regClass("4016e768-c3f6-4fd0-bb72-88410b2e9935", "../src/ui/Building.ts")
+  ], Building);
+
   // src/ui/MapBuilder.ts
   var RANDOM_CONFIG = {
     DEEP_MIN: 8,
@@ -336,8 +353,8 @@
   __name(MapAction, "MapAction");
 
   // src/ui/MapPanel.ts
-  var Texture = Laya.Texture;
-  var { regClass, property } = Laya;
+  var Texture2 = Laya.Texture;
+  var { regClass: regClass2, property: property2 } = Laya;
   var MapPanel = class extends Laya.Panel {
     constructor(width, height) {
       super();
@@ -381,6 +398,11 @@
       this.drawMap();
     }
     initMap() {
+      var _a;
+      for (let source in this.buildingMapper) {
+        (_a = this.buildingMapper[source].sprite) == null ? void 0 : _a.destroy(true);
+        this.buildingMapper[source].sprite = null;
+      }
       const { point: building, map: relation } = this.mapInfo;
       this.buildingMapper = {};
       this.map = [];
@@ -420,6 +442,7 @@
           }
         }
       }
+      console.log(this.map);
     }
     drawMap() {
       this.drawGround();
@@ -428,7 +451,7 @@
     }
     drawGround() {
       this.graphics.clear();
-      const groundTexture = Texture.create(Laya.loader.getRes("resources/tmw_desert_spacing.png"), 5 * 33 + 1, 3 * 33 + 1, 30, 30);
+      const groundTexture = Texture2.create(Laya.loader.getRes("resources/tmw_desert_spacing.png"), 5 * 33 + 1, 3 * 33 + 1, 30, 30);
       this.graphics.fillTexture(groundTexture, 0, 0, this.width, this.height);
     }
     drawRoads() {
@@ -452,11 +475,16 @@
     drawBuildings() {
       var _a;
       this.buildingSprite.graphics.clear();
-      const houseTexture = Texture.create(Laya.loader.getRes("resources/map/house.png"), 0, 0, 280, 280);
+      this.buildingSprite.destroyChildren();
+      const houseTexture = Texture2.create(Laya.loader.getRes("resources/map/house.png"), 0, 0, 280, 280);
       for (let y = 0; y < this.map.length; y++) {
         for (let x = 0; x < this.map[y].length; x++) {
           if (((_a = this.map[y][x]) == null ? void 0 : _a.id) !== void 0) {
-            this.buildingSprite.graphics.drawTexture(houseTexture, this.getXPos(x), this.getYPos(y), this.gridColumnWidth, this.gridRowHeight);
+            const building = new Building();
+            building.size(this.gridColumnWidth, this.gridRowHeight);
+            building.pos(this.getXPos(x), this.getYPos(y));
+            this.buildingSprite.addChild(building);
+            this.map[y][x].sprite = building;
           }
         }
       }
@@ -493,18 +521,19 @@
             y: curPoint.y + directions[i][1],
             turn: curPoint.turn || 0
           };
-          if (nextPoint.x < 0 || nextPoint.y < 0 || nextPoint.x >= this.gridColumns || nextPoint.y >= this.gridRows || visited.has(`${nextPoint.x}-${nextPoint.y}`)) {
-            continue;
-          }
           if (nextPoint.x === end.x && nextPoint.y === end.y) {
             isEnd = true;
             queue.unshift([end]);
             break;
           }
+          if (nextPoint.x < 0 || nextPoint.y < 0 || nextPoint.x >= this.gridColumns || nextPoint.y >= this.gridRows || this.map[nextPoint.y][nextPoint.x] !== null || visited.has(`${nextPoint.x}-${nextPoint.y}`)) {
+            continue;
+          }
           if (queue[1]) {
             const [prevPoint] = queue[1];
             if ((/* @__PURE__ */ new Set([prevPoint.x, curPoint.x, nextPoint.x])).size !== 1 && (/* @__PURE__ */ new Set([prevPoint.y, curPoint.y, nextPoint.y])).size !== 1) {
               nextPoint.turn++;
+              nextPoint.isTurn = true;
             }
           }
           nextPoint.value = this.calcPointValue(start, nextPoint) + this.calcPointValue(end, nextPoint);
@@ -552,11 +581,12 @@
   };
   __name(MapPanel, "MapPanel");
   MapPanel = __decorateClass([
-    regClass("8e8acd19-9514-4a59-b19e-ea56fed60c71", "../src/ui/MapPanel.ts")
+    regClass2("8e8acd19-9514-4a59-b19e-ea56fed60c71", "../src/ui/MapPanel.ts")
   ], MapPanel);
 
   // src/Index.ts
-  var { regClass: regClass2, property: property2 } = Laya;
+  var Event = Laya.Event;
+  var { regClass: regClass3, property: property3 } = Laya;
   var Index = class extends IndexBase {
     constructor() {
       super();
@@ -572,6 +602,11 @@
       this.map = new MapPanel(1136, 640);
       this.map.generate();
       this.addChild(this.map);
+      for (let id in this.map.buildingMapper) {
+        this.map.buildingMapper[id].sprite.on(Event.CLICK, () => {
+          this.map.highLightRoads(id);
+        });
+      }
     }
     /**
      * 组件被禁用时执行，例如从节点从舞台移除后
@@ -600,7 +635,7 @@
   };
   __name(Index, "Index");
   Index = __decorateClass([
-    regClass2("f0297df7-2262-4d82-afb2-2d0f83a1613b", "../src/Index.ts")
+    regClass3("f0297df7-2262-4d82-afb2-2d0f83a1613b", "../src/Index.ts")
   ], Index);
 
   // src/Loading.generated.ts
@@ -609,7 +644,7 @@
   __name(LoadingBase, "LoadingBase");
 
   // src/Loading.ts
-  var { regClass: regClass3 } = Laya;
+  var { regClass: regClass4 } = Laya;
   var resources = [
     "resources/tmw_desert_spacing.png",
     "resources/map/house.png"
@@ -651,7 +686,7 @@
   };
   __name(Loading, "Loading");
   Loading = __decorateClass([
-    regClass3("ce1c8aad-836c-4269-88cd-2c0a2d843f4d", "../src/Loading.ts")
+    regClass4("ce1c8aad-836c-4269-88cd-2c0a2d843f4d", "../src/Loading.ts")
   ], Loading);
 
   // src/draft/MapUi.generated.ts
@@ -660,8 +695,8 @@
   __name(MapUiBase, "MapUiBase");
 
   // src/draft/MapUi.ts
-  var Texture2 = Laya.Texture;
-  var { regClass: regClass4, property: property3 } = Laya;
+  var Texture3 = Laya.Texture;
+  var { regClass: regClass5, property: property4 } = Laya;
   var WIDTH = 1136;
   var HEIGHT = 640;
   var GRID_UNIT_W = 40;
@@ -788,12 +823,12 @@
      */
     onLoaded() {
       var _a, _b;
-      const groundTexture = Texture2.create(Laya.loader.getRes("resources/tmw_desert_spacing.png"), 5 * 33 + 1, 3 * 33 + 1, 30, 30);
+      const groundTexture = Texture3.create(Laya.loader.getRes("resources/tmw_desert_spacing.png"), 5 * 33 + 1, 3 * 33 + 1, 30, 30);
       this.bg.graphics.fillTexture(groundTexture, 0, 0, WIDTH, HEIGHT);
       this.building = new Laya.Sprite();
       this.bg.addChild(this.building);
-      const houseTexture = Texture2.create(Laya.loader.getRes("resources/map/house.png"), 0, 0, 280, 280);
-      const roadTexture = Texture2.create(Laya.loader.getRes("resources/tmw_desert_spacing.png"), 1 * 33 + 1, 4 * 33 + 1, 30, 30);
+      const houseTexture = Texture3.create(Laya.loader.getRes("resources/map/house.png"), 0, 0, 280, 280);
+      const roadTexture = Texture3.create(Laya.loader.getRes("resources/tmw_desert_spacing.png"), 1 * 33 + 1, 4 * 33 + 1, 30, 30);
       for (let y = 0; y < this.map.length; y++) {
         for (let x = 0; x < this.map[y].length; x++) {
           if (((_a = this.map[y][x]) == null ? void 0 : _a.type) === "house") {
@@ -832,7 +867,7 @@
   };
   __name(Script, "Script");
   Script = __decorateClass([
-    regClass4("111dc0ae-4a43-4f82-8004-289f668e79f3", "../src/draft/MapUi.ts")
+    regClass5("111dc0ae-4a43-4f82-8004-289f668e79f3", "../src/draft/MapUi.ts")
   ], Script);
 })();
 //# sourceMappingURL=bundle.js.map
