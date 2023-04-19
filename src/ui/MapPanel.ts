@@ -43,7 +43,7 @@ export class MapPanel extends Laya.Panel {
     private roadSprite: Laya.Sprite = new Laya.Sprite();
     private highLightRoadSprite: Laya.Sprite = new Laya.Sprite();
     private buildingSprite: Laya.Sprite = new Laya.Sprite();
-    
+
 
     constructor(width: number, height: number) {
         super();
@@ -72,6 +72,7 @@ export class MapPanel extends Laya.Panel {
         this.initMap();
         // 2. 绘制地图
         this.drawMap();
+        this.highLightRoads(0);
     }
 
     initMap(): void {
@@ -176,6 +177,19 @@ export class MapPanel extends Laya.Panel {
                     building.size(this.gridColumnWidth, this.gridRowHeight);
                     building.pos(this.getXPos(x), this.getYPos(y));
                     this.buildingSprite.addChild(building);
+                    building.on('click', () => {
+                        if (this.mapInfo.isFinish) {
+                            console.log('Game Finish!')
+                            return;
+                        }
+                        if (this.mapInfo.checkArrival(this.map[y][x].id)) {
+                            this.mapInfo.positionChange(this.map[y][x].id);
+                            this.highLightRoads(this.map[y][x].id)
+                        }
+                        if (this.mapInfo.isFinish) {
+                            console.log('Game Finish!')
+                        }
+                    })
                     this.map[y][x].sprite = building;
                 }
             }
@@ -213,7 +227,7 @@ export class MapPanel extends Laya.Panel {
             // 1. 寻找下一个点
             const curPoints = queue[0];
             const [curPoint] = curPoints;
-            
+
             let isEnd = false;
             const nextPoints = [];
             for (let i = 0; i < directions.length; i++) {

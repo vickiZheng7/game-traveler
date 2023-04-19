@@ -27,11 +27,11 @@ export class Index extends IndexBase {
         this.map.generate();
         this.addChild(this.map);
         // 2. 鼠标交互
-        for (let id in this.map.buildingMapper) {
-            this.map.buildingMapper[id].sprite.on(Event.CLICK, () => {
-                this.map.highLightRoads(id);
-            })
-        }
+        // for (let id in this.map.buildingMapper) {
+        //     this.map.buildingMapper[id].sprite.on(Event.CLICK, () => {
+        //         this.map.highLightRoads(id);
+        //     })
+        // }
     }
 
     /**
