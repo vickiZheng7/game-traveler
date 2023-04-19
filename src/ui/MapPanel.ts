@@ -2,11 +2,6 @@ import Texture = Laya.Texture;
 import MapAction from "./MapAction";
 const { regClass, property } = Laya;
 
-interface IData {
-    building: Array<number[]>;
-    relation: Record<number, Record<number, string>>;
-}
-
 interface IPos {
     x: number;
     y: number;
@@ -232,6 +227,7 @@ export class MapPanel extends Laya.Panel {
                     if (new Set([prevPoint.x, curPoint.x, nextPoint.x]).size !== 1 &&
                         new Set([prevPoint.y, curPoint.y, nextPoint.y]).size !== 1) {
                         nextPoint.turn++;
+                        nextPoint.isTurn = true;
                     }
                 }
                 // 4. 计算节点的cost
