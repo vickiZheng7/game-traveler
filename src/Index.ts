@@ -9,6 +9,7 @@ const { regClass, property } = Laya;
 export class Index extends IndexBase {
     //declare owner : Laya.Sprite3D;
     private map: MapPanel;
+    private openid: string;
     
     constructor() {
         super();
@@ -26,13 +27,12 @@ export class Index extends IndexBase {
         // 1. 初始化地图
         this.map = new MapPanel(1136, 640);
         let lastMapInfo = null;
-        let openid = null;
         if (testID) {
-            openid = testID
+            this.openid = testID
         } else {
-            openid = await login();
+            this.openid = await login();
         }
-        lastMapInfo = LocalStorage.getItem(openid) as MapAction;
+        lastMapInfo = LocalStorage.getItem(this.openid) as MapAction;
         this.map.generate(lastMapInfo);
         this.addChild(this.map);
         // 2. 鼠标交互
@@ -41,6 +41,7 @@ export class Index extends IndexBase {
         //         this.map.highLightRoads(id);
         //     })
         // }
+        Laya.timer.loop(1000, this, this.onTimer);
     }
 
     /**
@@ -74,4 +75,10 @@ export class Index extends IndexBase {
      * 鼠标点击后执行。与交互相关的还有onMouseDown等十多个函数，具体请参阅文档。
      */
     //onMouseClick(): void {}
+
+    // 定时器回调函数
+    onTimer() {
+        console.log("定时器触发");
+        LocalStorage.setItem(this.openid, this.map.mapInfo);
+    }
 }
