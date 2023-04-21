@@ -66,9 +66,13 @@ export class MapPanel extends Laya.Panel {
         this.gridColumns = Math.floor(this.width / this.gridColumnWidth);
     }
 
-    generate(): void {
+    generate(mapInfo: MapAction): void {
         // 1. 初始化数据
-        this.mapInfo = new MapAction();
+        if (mapInfo != null) {
+            this.mapInfo = mapInfo;
+        } else {
+            this.mapInfo = new MapAction();
+        }
         this.initMap();
         // 2. 绘制地图
         this.drawMap();

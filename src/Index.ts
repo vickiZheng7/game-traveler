@@ -1,6 +1,7 @@
 import { IndexBase } from "./Index.generated";
 import { MapPanel } from "./ui/MapPanel";
 import Event = Laya.Event;
+import MapAction from "./ui/MapAction";
 
 const { regClass, property } = Laya;
 
@@ -21,10 +22,18 @@ export class Index extends IndexBase {
     /**
      * 组件被启用后执行，例如节点被添加到舞台后
      */
-    onEnable(): void {
+    async onEnable(): Promise<void> {
         // 1. 初始化地图
         this.map = new MapPanel(1136, 640);
-        this.map.generate();
+        let lastMapInfo = null;
+        let openid = null;
+        if (testID) {
+            openid = testID
+        } else {
+            openid = await login();
+        }
+        lastMapInfo = LocalStorage.getItem(openid) as MapAction;
+        this.map.generate(lastMapInfo);
         this.addChild(this.map);
         // 2. 鼠标交互
         // for (let id in this.map.buildingMapper) {
@@ -47,7 +56,9 @@ export class Index extends IndexBase {
     /**
      * 手动调用节点销毁时执行
      */
-    //onDestroy(): void {
+    onDestroy(): void {
+        LocalStorage.setItem(testID, this.map.mapInfo);
+    }
 
     /**
      * 每帧更新时执行，尽量不要在这里写大循环逻辑或者使用getComponent方法
