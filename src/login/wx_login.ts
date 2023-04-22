@@ -1,3 +1,5 @@
+import { testID } from "../storage/local_storage";
+
 // 判断用户是否授权登录小程序
 function checkUserAuth(): Promise<boolean> {
     return new Promise((resolve, reject) => {

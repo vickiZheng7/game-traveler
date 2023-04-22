@@ -1,4 +1,4 @@
-class LocalStorage {
+export class LocalStorage {
     static setItem(key: string, value: any) {
         localStorage.setItem(key, JSON.stringify(value));
     }
@@ -17,4 +17,4 @@ class LocalStorage {
     }
 }
 
-const testID = "test";
+export let testID = "test";

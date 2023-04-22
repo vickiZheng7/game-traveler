@@ -2,6 +2,7 @@ import { IndexBase } from "./Index.generated";
 import { MapPanel } from "./ui/MapPanel";
 import Event = Laya.Event;
 import MapAction from "./ui/MapAction";
+import { LocalStorage, testID } from "./storage/local_storage";
 
 const { regClass, property } = Laya;
 
@@ -10,7 +11,7 @@ export class Index extends IndexBase {
     //declare owner : Laya.Sprite3D;
     private map: MapPanel;
     private openid: string;
-    
+
     constructor() {
         super();
     }
