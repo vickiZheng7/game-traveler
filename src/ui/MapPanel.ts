@@ -43,6 +43,7 @@ export class MapPanel extends Laya.Panel {
     private roadSprite: Laya.Sprite = new Laya.Sprite();
     private highLightRoadSprite: Laya.Sprite = new Laya.Sprite();
     private buildingSprite: Laya.Sprite = new Laya.Sprite();
+    private characterSprite: Laya.Sprite = new Laya.Sprite();
 
 
     constructor(width: number, height: number) {
@@ -56,6 +57,8 @@ export class MapPanel extends Laya.Panel {
         this.highLightRoadSprite.pos(0, 0);
         this.addChild(this.buildingSprite);
         this.buildingSprite.pos(0, 0);
+        this.addChild(this.characterSprite);
+        this.characterSprite.pos(0, 0);
 
     }
 
@@ -68,11 +71,13 @@ export class MapPanel extends Laya.Panel {
 
     generate(mapInfo: MapAction): void {
         // 1. 初始化数据
-        if (mapInfo != null) {
-            this.mapInfo = mapInfo;
-        } else {
-            this.mapInfo = new MapAction();
-        }
+        // if (mapInfo != null) {
+        //     this.mapInfo = mapInfo;
+        // } else {
+        //     this.mapInfo = new MapAction();
+        // }
+        this.mapInfo = new MapAction();
+
         this.initMap();
         // 2. 绘制地图
         this.drawMap();
@@ -136,6 +141,7 @@ export class MapPanel extends Laya.Panel {
         this.drawGround();
         this.drawRoads();
         this.drawBuildings();
+        this.drawCharacter();
     }
 
     drawGround() {
@@ -189,6 +195,7 @@ export class MapPanel extends Laya.Panel {
                         if (this.mapInfo.checkArrival(this.map[y][x].id)) {
                             this.mapInfo.positionChange(this.map[y][x].id);
                             this.highLightRoads(this.map[y][x].id)
+                            this.characterSprite.pos(this.getXPos(x), this.getYPos(y))
                         }
                         if (this.mapInfo.isFinish) {
                             console.log('Game Finish!')
@@ -199,7 +206,10 @@ export class MapPanel extends Laya.Panel {
             }
         }
     }
-
+    drawCharacter() {
+        const carTexture: Texture = Texture.create(Laya.loader.getRes("resources/map/car.png"), 0, 0, 330, 230);
+        this.characterSprite.graphics.drawTexture(carTexture, 0, 0, 50, 50);
+    }
     highLightRoads(id: number | string) {
         // 清除历史痕迹
         this.highLightRoadSprite.graphics.clear();

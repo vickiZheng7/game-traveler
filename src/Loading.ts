@@ -4,7 +4,8 @@ import { LoadingBase } from "./Loading.generated";
 
 const resources = [
     "resources/tmw_desert_spacing.png",
-    "resources/map/house.png"
+    "resources/map/house.png",
+    "resources/map/car.png"
 ];
   
 @regClass()

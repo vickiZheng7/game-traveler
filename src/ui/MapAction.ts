@@ -47,6 +47,7 @@ export default class MapAction {
     positionChange = (newPosition: number) => {
 
         let value = this.map[this.position][newPosition];
+        console.log(value);
         for (let i = 0; i < this.eventList.length; i++) {
             let event = this.eventList[i];
             if (event.path === 0) {
@@ -61,6 +62,7 @@ export default class MapAction {
         }
         this.lastPoint -= value;
         console.log('剩余点数', this.lastPoint);
+        if (isNaN(this.lastPoint))console.log(JSON.stringify(this.eventList) , value);
 
         if (this.lastPoint <= 0) {
             console.log('游戏结束，旅途失败');
