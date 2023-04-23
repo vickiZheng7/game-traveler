@@ -32,7 +32,7 @@ function getRandom(n: number, m: number): number {
 export class Script extends MapUiBase {
     //declare owner : Laya.Sprite3D;
     private building: Sprite;
-
+    private character: Sprite;
     // 地图数据
     public map: Array<IMapPoint[]> = []; // 1-表示道路，2-表示房子
     public idToMap: Record<number, [number, number]> = {};
@@ -198,7 +198,13 @@ export class Script extends MapUiBase {
                 }
             }
         }
+
+        // const carTexture: Texture = Texture.create(Laya.loader.getRes("resources/map/car.png"), 0, 0, 200, 200);
+        // this.character = new Laya.Sprite();
+        // this.character.graphics.drawTexture(carTexture , 0 , 0 , GRID_UNIT_W, GRID_UNIT_H)
         this.building.pos(0, 0);
+
+
     }
 
     /**

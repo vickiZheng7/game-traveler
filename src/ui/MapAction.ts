@@ -10,23 +10,30 @@ export default class MapAction {
     point: Array<number[]> = [];
     endPoint = 0;
     isFinish = false;
+    nextPoint: Array<number> = [];
     constructor() {
         const { map, defaultValue, point, pointEvent, endPoint } = mapBuilder();
         this.lastPoint = defaultValue;
         this.map = map;
         this.point = point;
         this.pointEvent = pointEvent;
+
         this.endPoint = endPoint;
         this.showRoad(this.position);
     }
+    checkArrival = (position: number) => {
+        return this.nextPoint.includes(position);
+    }
     showRoad = (position: number) => {
+        this.nextPoint = [];
         const roadList: Record<number, any> = this.map[position];
-        console.log('showRoad', position, roadList);
+        for (let key in this.map[position]) {
+            this.nextPoint.push(parseInt(key));
+        }
     }
     meetEvent = (position: number) => {
         let event = this.pointEvent[position];
 
-        console.log('event', position, event);
         if (event.type == 1) {
             this.eventList.push(event);
         }
@@ -38,21 +45,24 @@ export default class MapAction {
         }
     }
     positionChange = (newPosition: number) => {
+
         let value = this.map[this.position][newPosition];
+        console.log(value);
         for (let i = 0; i < this.eventList.length; i++) {
             let event = this.eventList[i];
+            if (event.path === 0) {
+                continue;
+            }
             if (event.value == 0) {
                 value = 0;
             } else {
                 value += event.value;
             }
-            if (event.path === 0) {
-                this.eventList.splice(i, 1);
-                i--;
-            }
+            event.path--;
         }
         this.lastPoint -= value;
         console.log('剩余点数', this.lastPoint);
+        if (isNaN(this.lastPoint))console.log(JSON.stringify(this.eventList) , value);
 
         if (this.lastPoint <= 0) {
             console.log('游戏结束，旅途失败');

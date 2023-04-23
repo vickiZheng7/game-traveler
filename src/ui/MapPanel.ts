@@ -1,3 +1,4 @@
+import { Building } from "./Building";
 import Texture = Laya.Texture;
 import MapAction from "./MapAction";
 const { regClass, property } = Laya;
@@ -17,6 +18,7 @@ interface IRoad {
 }
 interface IBuilding extends IPos {
     id: number;
+    sprite?: Building;
     targets?: Record<number, IRoad>;
 }
 type IMapPoint = IBuilding;
@@ -34,14 +36,15 @@ export class MapPanel extends Laya.Panel {
     // 地图数据
     public map: IMapPoint[][] = [];
     // 建筑物数据
-    public buildingMapper: Record<number, IMapPoint> = {};
+    public buildingMapper: Record<number | string, IMapPoint> = {};
     // 原始地图数据
     public mapInfo: MapAction = null;
     // sprite
     private roadSprite: Laya.Sprite = new Laya.Sprite();
     private highLightRoadSprite: Laya.Sprite = new Laya.Sprite();
     private buildingSprite: Laya.Sprite = new Laya.Sprite();
-    
+    private characterSprite: Laya.Sprite = new Laya.Sprite();
+
 
     constructor(width: number, height: number) {
         super();
@@ -54,6 +57,8 @@ export class MapPanel extends Laya.Panel {
         this.highLightRoadSprite.pos(0, 0);
         this.addChild(this.buildingSprite);
         this.buildingSprite.pos(0, 0);
+        this.addChild(this.characterSprite);
+        this.characterSprite.pos(0, 0);
 
     }
 
@@ -64,23 +69,35 @@ export class MapPanel extends Laya.Panel {
         this.gridColumns = Math.floor(this.width / this.gridColumnWidth);
     }
 
-    generate(): void {
+    generate(mapInfo: MapAction): void {
         // 1. 初始化数据
+        // if (mapInfo != null) {
+        //     this.mapInfo = mapInfo;
+        // } else {
+        //     this.mapInfo = new MapAction();
+        // }
         this.mapInfo = new MapAction();
+
         this.initMap();
         // 2. 绘制地图
         this.drawMap();
+        this.highLightRoads(0);
     }
 
     initMap(): void {
+        // 1. 销毁历史sprite
+        for (let source in this.buildingMapper) {
+            this.buildingMapper[source].sprite?.destroy(true);
+            this.buildingMapper[source].sprite = null;
+        }
+        // 2. 初始化地图数据
         const { point: building, map: relation } = this.mapInfo;
-        // 1. 初始化地图数据
         this.buildingMapper = {};
         this.map = [];
         for (let i = 0; i < this.gridRows; i++) {
             this.map.push(new Array(this.gridColumns).fill(null));
         }
-        // 2. 确定building位置，尽可能充满地图(随机性)
+        // 3. 确定building位置，尽可能充满地图(随机性)
         const firstBuilding = { id: 0, x: 0, y: 0 }
         this.map[0][0] = firstBuilding;
         this.buildingMapper[firstBuilding.id] = firstBuilding;
@@ -99,7 +116,7 @@ export class MapPanel extends Laya.Panel {
             }
             nextX = curX + 2;
         }
-        // 3. 确定road经过节点，确保路径短，拐弯少
+        // 4. 确定road经过节点，确保路径短，拐弯少
         for (let source in relation) {
             for (let target in relation[source]) {
                 if (!this.buildingMapper[source]) {
@@ -117,12 +134,14 @@ export class MapPanel extends Laya.Panel {
                 }
             }
         }
+        console.log(this.map)
     }
 
     drawMap() {
         this.drawGround();
         this.drawRoads();
         this.drawBuildings();
+        this.drawCharacter();
     }
 
     drawGround() {
@@ -158,18 +177,40 @@ export class MapPanel extends Laya.Panel {
     drawBuildings() {
         // 清除历史痕迹
         this.buildingSprite.graphics.clear();
+        this.buildingSprite.destroyChildren();
         // 建筑物绘制
         const houseTexture: Texture = Texture.create(Laya.loader.getRes("resources/map/house.png"), 0, 0, 280, 280);
         for (let y = 0; y < this.map.length; y++) {
             for (let x = 0; x < this.map[y].length; x++) {
                 if (this.map[y][x]?.id !== undefined) {
-                    this.buildingSprite.graphics.drawTexture(houseTexture, this.getXPos(x), this.getYPos(y), this.gridColumnWidth, this.gridRowHeight);
+                    const building = new Building();
+                    building.size(this.gridColumnWidth, this.gridRowHeight);
+                    building.pos(this.getXPos(x), this.getYPos(y));
+                    this.buildingSprite.addChild(building);
+                    building.on('click', () => {
+                        if (this.mapInfo.isFinish) {
+                            console.log('Game Finish!')
+                            return;
+                        }
+                        if (this.mapInfo.checkArrival(this.map[y][x].id)) {
+                            this.mapInfo.positionChange(this.map[y][x].id);
+                            this.highLightRoads(this.map[y][x].id)
+                            this.characterSprite.pos(this.getXPos(x), this.getYPos(y))
+                        }
+                        if (this.mapInfo.isFinish) {
+                            console.log('Game Finish!')
+                        }
+                    })
+                    this.map[y][x].sprite = building;
                 }
             }
         }
     }
-
-    highLightRoads(id: number) {
+    drawCharacter() {
+        const carTexture: Texture = Texture.create(Laya.loader.getRes("resources/map/car.png"), 0, 0, 330, 230);
+        this.characterSprite.graphics.drawTexture(carTexture, 0, 0, 50, 50);
+    }
+    highLightRoads(id: number | string) {
         // 清除历史痕迹
         this.highLightRoadSprite.graphics.clear();
         const building = this.buildingMapper[id];
@@ -200,7 +241,7 @@ export class MapPanel extends Laya.Panel {
             // 1. 寻找下一个点
             const curPoints = queue[0];
             const [curPoint] = curPoints;
-            
+
             let isEnd = false;
             const nextPoints = [];
             for (let i = 0; i < directions.length; i++) {
@@ -209,17 +250,18 @@ export class MapPanel extends Laya.Panel {
                     y: curPoint.y + directions[i][1],
                     turn: curPoint.turn || 0
                 };
-                // 1. 判断节点是否有效
-                if (nextPoint.x < 0 || nextPoint.y < 0 ||
-                    nextPoint.x >= this.gridColumns || nextPoint.y >= this.gridRows ||
-                    visited.has(`${nextPoint.x}-${nextPoint.y}`)) {
-                    continue;
-                }
-                // 2. 判断节点是否为终点
+                // 1. 判断节点是否为终点
                 if (nextPoint.x === end.x && nextPoint.y === end.y) {
                     isEnd = true;
                     queue.unshift([end]);
                     break;
+                }
+                // 2. 判断节点是否有效
+                if (nextPoint.x < 0 || nextPoint.y < 0 ||
+                    nextPoint.x >= this.gridColumns || nextPoint.y >= this.gridRows ||
+                    this.map[nextPoint.y][nextPoint.x] !== null ||
+                    visited.has(`${nextPoint.x}-${nextPoint.y}`)) {
+                    continue;
                 }
                 // 3. 判断节点是否拐弯
                 if (queue[1]) {
