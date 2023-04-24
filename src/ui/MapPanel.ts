@@ -10,7 +10,7 @@ interface IPos {
 interface IRoadPoint extends IPos {
     turn?: number; // 第几个拐弯
     isTurn?: boolean; // 当前是否为拐弯
-    value?: number; // 距离start和距离end相加的权重，越小越正确
+    value?: number; // 当前distance和距离end相加的权重，越小越正确
 }
 interface IRoad {
     cost: number;
@@ -134,7 +134,6 @@ export class MapPanel extends Laya.Panel {
                 }
             }
         }
-        console.log(this.map)
     }
 
     drawMap() {
@@ -179,7 +178,6 @@ export class MapPanel extends Laya.Panel {
         this.buildingSprite.graphics.clear();
         this.buildingSprite.destroyChildren();
         // 建筑物绘制
-        const houseTexture: Texture = Texture.create(Laya.loader.getRes("resources/map/house.png"), 0, 0, 280, 280);
         for (let y = 0; y < this.map.length; y++) {
             for (let x = 0; x < this.map[y].length; x++) {
                 if (this.map[y][x]?.id !== undefined) {
@@ -187,6 +185,9 @@ export class MapPanel extends Laya.Panel {
                     building.size(this.gridColumnWidth, this.gridRowHeight);
                     building.pos(this.getXPos(x), this.getYPos(y));
                     this.buildingSprite.addChild(building);
+                    this.map[y][x].sprite = building;
+
+                    // 绑定事件
                     building.on('click', () => {
                         if (this.mapInfo.isFinish) {
                             console.log('Game Finish!')
@@ -201,7 +202,6 @@ export class MapPanel extends Laya.Panel {
                             console.log('Game Finish!')
                         }
                     })
-                    this.map[y][x].sprite = building;
                 }
             }
         }
@@ -226,24 +226,18 @@ export class MapPanel extends Laya.Panel {
         return Math.abs(start.x - end.x) + Math.abs(start.y - end.y);
     }
 
+    // (已走 + 预测cost)路径最短 -> 拐弯最少
     getRoadPoints(start: IBuilding, end: IBuilding): IRoadPoint[] {
         if (!start || !end) {
             return [];
         }
-        const directions = [[0, 1], [1, 0], [0, -1], [-1, 0]];
-        // 路径顺序
-        const queue: IRoadPoint[][] = [[{ ...start, turn: 0 }]];
-        // 访问过的位置
-        const visited = new Set();
-        visited.add(`${start.x}-${start.y}`);
-        // 往下查找
+        const queue: IRoadPoint[][] = [[{ x: start.x, y: start.y, turn: 0 }]];
+        const directions = [[0, 1], [0, -1], [1, 0], [-1, 0]];
         while (queue.length) {
-            // 1. 寻找下一个点
-            const curPoints = queue[0];
-            const [curPoint] = curPoints;
-
+            const lastRoad = queue.shift();
+            const [curPoint, prevPoint] = lastRoad;
+            const lastRoadNum = queue.length;
             let isEnd = false;
-            const nextPoints = [];
             for (let i = 0; i < directions.length; i++) {
                 const nextPoint: IRoadPoint = {
                     x: curPoint.x + directions[i][0],
@@ -253,19 +247,17 @@ export class MapPanel extends Laya.Panel {
                 // 1. 判断节点是否为终点
                 if (nextPoint.x === end.x && nextPoint.y === end.y) {
                     isEnd = true;
-                    queue.unshift([end]);
+                    queue.unshift([nextPoint, ...lastRoad]);
                     break;
                 }
                 // 2. 判断节点是否有效
                 if (nextPoint.x < 0 || nextPoint.y < 0 ||
                     nextPoint.x >= this.gridColumns || nextPoint.y >= this.gridRows ||
-                    this.map[nextPoint.y][nextPoint.x] !== null ||
-                    visited.has(`${nextPoint.x}-${nextPoint.y}`)) {
+                    this.map[nextPoint.y][nextPoint.x] !== null) {
                     continue;
                 }
                 // 3. 判断节点是否拐弯
-                if (queue[1]) {
-                    const [prevPoint] = queue[1];
+                if (prevPoint) {
                     if (new Set([prevPoint.x, curPoint.x, nextPoint.x]).size !== 1 &&
                         new Set([prevPoint.y, curPoint.y, nextPoint.y]).size !== 1) {
                         nextPoint.turn++;
@@ -273,36 +265,17 @@ export class MapPanel extends Laya.Panel {
                     }
                 }
                 // 4. 计算节点的cost
-                nextPoint.value = this.calcPointValue(start, nextPoint) + this.calcPointValue(end, nextPoint);
-                nextPoints.push(nextPoint);
+                nextPoint.value = lastRoad.length + this.calcPointValue(nextPoint, end);
+                queue.unshift([nextPoint, ...lastRoad]);
             }
             if (isEnd) {
                 break;
             }
-            if (nextPoints.length) {
-                nextPoints.sort((a, b) => a.value === b.value ? a.turn - b.turn : a.value - b.value);
-                queue.unshift(nextPoints);
-                visited.add(`${nextPoints[0].x}-${nextPoints[0].y}`)
-                continue;
-            }
-            // 2. 回到上一个节点
-            while (queue.length) {
-                // 1. 移除第一个节点
-                queue[0].shift();
-                // 2. 如果非空，继续往下
-                if (queue[0].length) {
-                    const [curPoint] = queue[0];
-                    visited.add(`${curPoint.x}-${curPoint.y}`);
-                    break;
-                }
-                // 3. 为空，删掉节点
-                queue.shift();
+            if (queue.length !== lastRoadNum) {
+                queue.sort((a, b) => a[0].value === b[0].value ? a[0].turn - b[0].turn : a[0].value - b[0].value);
             }
         }
-        if (!queue.length) {
-            return [];
-        }
-        return queue.reverse().map(points => points[0]);
+        return queue[0].reverse();
     }
 
     getRandom(n: number, m: number): number {

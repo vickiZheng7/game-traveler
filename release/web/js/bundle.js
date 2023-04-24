@@ -19,7 +19,8 @@
   var { regClass } = Laya;
   var resources = [
     "resources/tmw_desert_spacing.png",
-    "resources/map/house.png"
+    "resources/map/house.png",
+    "resources/map/car.png"
   ];
   var Loading = class extends LoadingBase {
     onAwake() {

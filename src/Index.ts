@@ -42,7 +42,7 @@ export class Index extends IndexBase {
         //         this.map.highLightRoads(id);
         //     })
         // }
-        Laya.timer.loop(1000, this, this.onTimer);
+        // Laya.timer.loop(1000, this, this.onTimer);
     }
 
     /**
@@ -78,8 +78,8 @@ export class Index extends IndexBase {
     //onMouseClick(): void {}
 
     // 定时器回调函数
-    onTimer() {
-        console.log("定时器触发");
-        LocalStorage.setItem(this.openid, this.map.mapInfo);
-    }
+    // onTimer() {
+    //     console.log("定时器触发");
+    //     LocalStorage.setItem(this.openid, this.map.mapInfo);
+    // }
 }
