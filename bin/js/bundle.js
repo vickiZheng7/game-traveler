@@ -1,24 +1,6 @@
 (() => {
   var __defProp = Object.defineProperty;
-  var __defProps = Object.defineProperties;
   var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
-  var __getOwnPropDescs = Object.getOwnPropertyDescriptors;
-  var __getOwnPropSymbols = Object.getOwnPropertySymbols;
-  var __hasOwnProp = Object.prototype.hasOwnProperty;
-  var __propIsEnum = Object.prototype.propertyIsEnumerable;
-  var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-  var __spreadValues = (a, b) => {
-    for (var prop in b ||= {})
-      if (__hasOwnProp.call(b, prop))
-        __defNormalProp(a, prop, b[prop]);
-    if (__getOwnPropSymbols)
-      for (var prop of __getOwnPropSymbols(b)) {
-        if (__propIsEnum.call(b, prop))
-          __defNormalProp(a, prop, b[prop]);
-      }
-    return a;
-  };
-  var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
   var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
   var __decorateClass = (decorators, target, key, kind) => {
     var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc(target, key) : target;
@@ -28,6 +10,26 @@
     if (kind && result)
       __defProp(target, key, result);
     return result;
+  };
+  var __async = (__this, __arguments, generator) => {
+    return new Promise((resolve, reject) => {
+      var fulfilled = (value) => {
+        try {
+          step(generator.next(value));
+        } catch (e) {
+          reject(e);
+        }
+      };
+      var rejected = (value) => {
+        try {
+          step(generator.throw(value));
+        } catch (e) {
+          reject(e);
+        }
+      };
+      var step = (x) => x.done ? resolve(x.value) : Promise.resolve(x.value).then(fulfilled, rejected);
+      step((generator = generator.apply(__this, __arguments)).next());
+    });
   };
 
   // src/Index.generated.ts
@@ -212,7 +214,7 @@
     let resultRecord = [];
     function dps(pos, road, value, event) {
       let value_ = 0;
-      let newEvent = [];
+      let newEvent = null;
       if (pos == pointNumber) {
         resultRecord.push({ value, road });
         if (minCause == 0 || minCause > value) {
@@ -251,18 +253,17 @@
         if (event.length != 0) {
           for (let i = 0; i < event.length; i++) {
             let e = event[i];
+            if (e.path == 0)
+              continue;
             if (e.value == 0) {
               v = 0;
             } else {
               v += e.value;
             }
-            if (e.path == 0) {
-              event.splice(i, 1);
-              i--;
-            }
+            e.path--;
           }
         }
-        dps(target, [...road, target], value + v + value_, [...event, newEvent]);
+        dps(target, [...road, target], value + v + value_, newEvent ? [...event, newEvent] : [...event]);
       }
     }
     __name(dps, "dps");
@@ -277,7 +278,7 @@
     createMap();
     createEvent();
     calculateValue();
-    const defaultValue = Math.round(minCause + (maxCause - minCause) * 0.3);
+    const defaultValue = Math.round(minCause + (maxCause - minCause) * 0.1);
     return { map, defaultValue, point, pointEvent, endPoint: pointNumber };
   }
   __name(mapBuilder, "mapBuilder");
@@ -294,13 +295,19 @@
       this.point = [];
       this.endPoint = 0;
       this.isFinish = false;
+      this.nextPoint = [];
+      this.checkArrival = /* @__PURE__ */ __name((position) => {
+        return this.nextPoint.includes(position);
+      }, "checkArrival");
       this.showRoad = /* @__PURE__ */ __name((position) => {
+        this.nextPoint = [];
         const roadList = this.map[position];
-        console.log("showRoad", position, roadList);
+        for (let key in this.map[position]) {
+          this.nextPoint.push(parseInt(key));
+        }
       }, "showRoad");
       this.meetEvent = /* @__PURE__ */ __name((position) => {
         let event = this.pointEvent[position];
-        console.log("event", position, event);
         if (event.type == 1) {
           this.eventList.push(event);
         }
@@ -313,20 +320,23 @@
       }, "meetEvent");
       this.positionChange = /* @__PURE__ */ __name((newPosition) => {
         let value = this.map[this.position][newPosition];
+        console.log(value);
         for (let i = 0; i < this.eventList.length; i++) {
           let event = this.eventList[i];
+          if (event.path === 0) {
+            continue;
+          }
           if (event.value == 0) {
             value = 0;
           } else {
             value += event.value;
           }
-          if (event.path === 0) {
-            this.eventList.splice(i, 1);
-            i--;
-          }
+          event.path--;
         }
         this.lastPoint -= value;
         console.log("\u5269\u4F59\u70B9\u6570", this.lastPoint);
+        if (isNaN(this.lastPoint))
+          console.log(JSON.stringify(this.eventList), value);
         if (this.lastPoint <= 0) {
           console.log("\u6E38\u620F\u7ED3\u675F\uFF0C\u65C5\u9014\u5931\u8D25");
           this.isFinish = true;
@@ -376,6 +386,7 @@
       this.roadSprite = new Laya.Sprite();
       this.highLightRoadSprite = new Laya.Sprite();
       this.buildingSprite = new Laya.Sprite();
+      this.characterSprite = new Laya.Sprite();
       this.width = width;
       this.height = height;
       this.initGrid();
@@ -385,6 +396,8 @@
       this.highLightRoadSprite.pos(0, 0);
       this.addChild(this.buildingSprite);
       this.buildingSprite.pos(0, 0);
+      this.addChild(this.characterSprite);
+      this.characterSprite.pos(0, 0);
     }
     initGrid(rowHeight = 40, columnWidth = 40) {
       this.gridColumnWidth = columnWidth;
@@ -392,10 +405,11 @@
       this.gridRows = Math.floor(this.height / this.gridRowHeight);
       this.gridColumns = Math.floor(this.width / this.gridColumnWidth);
     }
-    generate() {
+    generate(mapInfo) {
       this.mapInfo = new MapAction();
       this.initMap();
       this.drawMap();
+      this.highLightRoads(0);
     }
     initMap() {
       var _a;
@@ -442,12 +456,12 @@
           }
         }
       }
-      console.log(this.map);
     }
     drawMap() {
       this.drawGround();
       this.drawRoads();
       this.drawBuildings();
+      this.drawCharacter();
     }
     drawGround() {
       this.graphics.clear();
@@ -476,7 +490,6 @@
       var _a;
       this.buildingSprite.graphics.clear();
       this.buildingSprite.destroyChildren();
-      const houseTexture = Texture2.create(Laya.loader.getRes("resources/map/house.png"), 0, 0, 280, 280);
       for (let y = 0; y < this.map.length; y++) {
         for (let x = 0; x < this.map[y].length; x++) {
           if (((_a = this.map[y][x]) == null ? void 0 : _a.id) !== void 0) {
@@ -485,9 +498,27 @@
             building.pos(this.getXPos(x), this.getYPos(y));
             this.buildingSprite.addChild(building);
             this.map[y][x].sprite = building;
+            building.on("click", () => {
+              if (this.mapInfo.isFinish) {
+                console.log("Game Finish!");
+                return;
+              }
+              if (this.mapInfo.checkArrival(this.map[y][x].id)) {
+                this.mapInfo.positionChange(this.map[y][x].id);
+                this.highLightRoads(this.map[y][x].id);
+                this.characterSprite.pos(this.getXPos(x), this.getYPos(y));
+              }
+              if (this.mapInfo.isFinish) {
+                console.log("Game Finish!");
+              }
+            });
           }
         }
       }
+    }
+    drawCharacter() {
+      const carTexture = Texture2.create(Laya.loader.getRes("resources/map/car.png"), 0, 0, 330, 230);
+      this.characterSprite.graphics.drawTexture(carTexture, 0, 0, 50, 50);
     }
     highLightRoads(id) {
       this.highLightRoadSprite.graphics.clear();
@@ -502,19 +533,18 @@
     calcPointValue(start, end) {
       return Math.abs(start.x - end.x) + Math.abs(start.y - end.y);
     }
+    // (已走 + 预测cost)路径最短 -> 拐弯最少
     getRoadPoints(start, end) {
       if (!start || !end) {
         return [];
       }
-      const directions = [[0, 1], [1, 0], [0, -1], [-1, 0]];
-      const queue = [[__spreadProps(__spreadValues({}, start), { turn: 0 })]];
-      const visited = /* @__PURE__ */ new Set();
-      visited.add(`${start.x}-${start.y}`);
+      const queue = [[{ x: start.x, y: start.y, turn: 0 }]];
+      const directions = [[0, 1], [0, -1], [1, 0], [-1, 0]];
       while (queue.length) {
-        const curPoints = queue[0];
-        const [curPoint] = curPoints;
+        const lastRoad = queue.shift();
+        const [curPoint, prevPoint] = lastRoad;
+        const lastRoadNum = queue.length;
         let isEnd = false;
-        const nextPoints = [];
         for (let i = 0; i < directions.length; i++) {
           const nextPoint = {
             x: curPoint.x + directions[i][0],
@@ -523,45 +553,29 @@
           };
           if (nextPoint.x === end.x && nextPoint.y === end.y) {
             isEnd = true;
-            queue.unshift([end]);
+            queue.unshift([nextPoint, ...lastRoad]);
             break;
           }
-          if (nextPoint.x < 0 || nextPoint.y < 0 || nextPoint.x >= this.gridColumns || nextPoint.y >= this.gridRows || this.map[nextPoint.y][nextPoint.x] !== null || visited.has(`${nextPoint.x}-${nextPoint.y}`)) {
+          if (nextPoint.x < 0 || nextPoint.y < 0 || nextPoint.x >= this.gridColumns || nextPoint.y >= this.gridRows || this.map[nextPoint.y][nextPoint.x] !== null) {
             continue;
           }
-          if (queue[1]) {
-            const [prevPoint] = queue[1];
+          if (prevPoint) {
             if ((/* @__PURE__ */ new Set([prevPoint.x, curPoint.x, nextPoint.x])).size !== 1 && (/* @__PURE__ */ new Set([prevPoint.y, curPoint.y, nextPoint.y])).size !== 1) {
               nextPoint.turn++;
               nextPoint.isTurn = true;
             }
           }
-          nextPoint.value = this.calcPointValue(start, nextPoint) + this.calcPointValue(end, nextPoint);
-          nextPoints.push(nextPoint);
+          nextPoint.value = lastRoad.length + this.calcPointValue(nextPoint, end);
+          queue.unshift([nextPoint, ...lastRoad]);
         }
         if (isEnd) {
           break;
         }
-        if (nextPoints.length) {
-          nextPoints.sort((a, b) => a.value === b.value ? a.turn - b.turn : a.value - b.value);
-          queue.unshift(nextPoints);
-          visited.add(`${nextPoints[0].x}-${nextPoints[0].y}`);
-          continue;
-        }
-        while (queue.length) {
-          queue[0].shift();
-          if (queue[0].length) {
-            const [curPoint2] = queue[0];
-            visited.add(`${curPoint2.x}-${curPoint2.y}`);
-            break;
-          }
-          queue.shift();
+        if (queue.length !== lastRoadNum) {
+          queue.sort((a, b) => a[0].value === b[0].value ? a[0].turn - b[0].turn : a[0].value - b[0].value);
         }
       }
-      if (!queue.length) {
-        return [];
-      }
-      return queue.reverse().map((points) => points[0]);
+      return queue[0].reverse();
     }
     getRandom(n, m) {
       return Math.floor(Math.random() * (m - n + 1) + n);
@@ -584,8 +598,25 @@
     regClass2("8e8acd19-9514-4a59-b19e-ea56fed60c71", "../src/ui/MapPanel.ts")
   ], MapPanel);
 
+  // src/storage/local_storage.ts
+  var LocalStorage = class {
+    static setItem(key, value) {
+      localStorage.setItem(key, JSON.stringify(value));
+    }
+    static getItem(key) {
+      const item = localStorage.getItem(key);
+      return item ? JSON.parse(item) : null;
+    }
+    static removeItem(key) {
+      localStorage.removeItem(key);
+    }
+    static clear() {
+      localStorage.clear();
+    }
+  };
+  __name(LocalStorage, "LocalStorage");
+
   // src/Index.ts
-  var Event = Laya.Event;
   var { regClass: regClass3, property: property3 } = Laya;
   var Index = class extends IndexBase {
     constructor() {
@@ -599,14 +630,9 @@
      * 组件被启用后执行，例如节点被添加到舞台后
      */
     onEnable() {
-      this.map = new MapPanel(1136, 640);
-      this.map.generate();
-      this.addChild(this.map);
-      for (let id in this.map.buildingMapper) {
-        this.map.buildingMapper[id].sprite.on(Event.CLICK, () => {
-          this.map.highLightRoads(id);
-        });
-      }
+      return __async(this, null, function* () {
+        console.log("onEnable");
+      });
     }
     /**
      * 组件被禁用时执行，例如从节点从舞台移除后
@@ -619,7 +645,9 @@
     /**
      * 手动调用节点销毁时执行
      */
-    //onDestroy(): void {
+    onDestroy() {
+      LocalStorage.setItem(this.openid, this.map.mapInfo);
+    }
     /**
      * 每帧更新时执行，尽量不要在这里写大循环逻辑或者使用getComponent方法
      */
@@ -632,6 +660,22 @@
      * 鼠标点击后执行。与交互相关的还有onMouseDown等十多个函数，具体请参阅文档。
      */
     //onMouseClick(): void {}
+    // 定时器回调函数
+    // onTimer() {
+    //     console.log("定时器触发");
+    //     LocalStorage.setItem(this.openid, this.map.mapInfo);
+    // }
+    // 新场景加载完成后执行
+    onOpened(param) {
+      this.openid = param["openid"];
+      if (this.openid != null) {
+        this.lastMapInfo = LocalStorage.getItem(this.openid);
+      }
+      console.log("onOpened: " + this.openid + " " + this.lastMapInfo);
+      this.map = new MapPanel(1136, 640);
+      this.map.generate(this.lastMapInfo);
+      this.addChild(this.map);
+    }
   };
   __name(Index, "Index");
   Index = __decorateClass([
@@ -643,11 +687,103 @@
   };
   __name(LoadingBase, "LoadingBase");
 
+  // src/login/wx_login.ts
+  function checkUserAuth() {
+    return new Promise((resolve, reject) => {
+      wx.getSetting({
+        success: (res) => {
+          if (res.authSetting["scope.userInfo"]) {
+            resolve(true);
+          } else {
+            resolve(false);
+          }
+        },
+        fail: (error) => {
+          reject(error);
+        }
+      });
+    });
+  }
+  __name(checkUserAuth, "checkUserAuth");
+  function requestUserAuth() {
+    return new Promise((resolve, reject) => {
+      wx.getUserInfo({
+        withCredentials: true,
+        success: (res) => {
+          resolve(res.userInfo);
+        },
+        fail: (error) => {
+          reject(error);
+        }
+      });
+    });
+  }
+  __name(requestUserAuth, "requestUserAuth");
+  function wxLogin() {
+    return new Promise((resolve, reject) => {
+      wx.login({
+        success: (res) => {
+          resolve(res);
+        },
+        fail: (error) => {
+          reject(error);
+        }
+      });
+    });
+  }
+  __name(wxLogin, "wxLogin");
+  function login() {
+    return __async(this, null, function* () {
+      try {
+        const isAuth = yield checkUserAuth();
+        if (!isAuth) {
+          yield requestUserAuth();
+        }
+        const wxLoginRes = yield wxLogin();
+        console.log("wxLoginRes: " + wxLoginRes);
+        if (wxLoginRes.code) {
+          const code2SessionRes = yield wxCode2Session(wxLoginRes.code);
+          console.log("code2SessionRes: " + code2SessionRes);
+          return code2SessionRes;
+        }
+      } catch (error) {
+        console.log("login err: " + error);
+      }
+      return null;
+    });
+  }
+  __name(login, "login");
+  function wxCode2Session(code) {
+    return __async(this, null, function* () {
+      return new Promise((resolve, reject) => {
+        wx.request({
+          url: "https://api.weixin.qq.com/sns/jscode2session",
+          data: {
+            appid: "your_appid",
+            secret: "your_secret",
+            js_code: code,
+            grant_type: "authorization_code"
+          },
+          success(res) {
+            console.log("resp.data: " + res.data);
+            resolve(res);
+          },
+          fail(error) {
+            console.log("\u5FAE\u4FE1\u767B\u5F55\u5931\u8D25");
+            reject(error);
+          }
+        });
+      });
+    });
+  }
+  __name(wxCode2Session, "wxCode2Session");
+
   // src/Loading.ts
   var { regClass: regClass4 } = Laya;
   var resources = [
     "resources/tmw_desert_spacing.png",
-    "resources/map/house.png"
+    "resources/map/house.png",
+    "resources/map/car.png"
   ];
   var Loading = class extends LoadingBase {
     onAwake() {
@@ -658,12 +794,18 @@
           "atlas/comp/progress$bar.png"
         ]
       ).then(() => {
-        Laya.loader.load(resources, null, Laya.Handler.create(this, this.onLoading, null, false)).then(() => {
+        Laya.loader.load(resources, null, Laya.Handler.create(this, this.onLoading, null, false)).then(() => __async(this, null, function* () {
+          let openid = LocalStorage.getItem("game_traveler_user_id");
+          if (openid == null) {
+            console.log("openid\u4E3A\u7A7A, \u5C1D\u8BD5\u5FAE\u4FE1\u767B\u5F55");
+            openid = yield login();
+            console.log("openid: " + openid);
+          }
           this.progress.value = 0.98;
           Laya.timer.once(1e3, this, () => {
-            Laya.Scene.open("scenes/Index.ls");
+            Laya.Scene.open("scenes/Index.ls", true, { "openid": openid });
           });
-        });
+        }));
         Laya.loader.on(Laya.Event.ERROR, this, this.onError);
       });
     }
@@ -682,192 +824,25 @@
         this.progress.value = 0.95;
       else
         this.progress.value = progress;
+      Laya.Browser.window.wx.config({
+        debug: false,
+        // 是否开启调试模式
+        appId: "your_app_id",
+        // 公众号的唯一标识
+        timestamp: "your_timestamp",
+        // 生成签名的时间戳
+        nonceStr: "your_nonce_str",
+        // 生成签名的随机串
+        signature: "your_signature",
+        // 签名
+        jsApiList: ["your_js_api_list"]
+        // 需要使用的JS接口列表
+      });
     }
   };
   __name(Loading, "Loading");
   Loading = __decorateClass([
     regClass4("ce1c8aad-836c-4269-88cd-2c0a2d843f4d", "../src/Loading.ts")
   ], Loading);
-
-  // src/draft/MapUi.generated.ts
-  var MapUiBase = class extends Laya.Scene {
-  };
-  __name(MapUiBase, "MapUiBase");
-
-  // src/draft/MapUi.ts
-  var Texture3 = Laya.Texture;
-  var { regClass: regClass5, property: property4 } = Laya;
-  var WIDTH = 1136;
-  var HEIGHT = 640;
-  var GRID_UNIT_W = 40;
-  var GRID_UNIT_H = 40;
-  var GRID_UNIT_W_NUM = Math.floor(WIDTH / GRID_UNIT_W);
-  var GRID_UNIT_H_NUM = Math.floor(HEIGHT / GRID_UNIT_H);
-  function getRandom(n, m) {
-    return Math.floor(Math.random() * (m - n + 1) + n);
-  }
-  __name(getRandom, "getRandom");
-  var Script = class extends MapUiBase {
-    constructor() {
-      super();
-      // 地图数据
-      this.map = [];
-      // 1-表示道路，2-表示房子
-      this.idToMap = {};
-      this.mapPoint = [];
-      this.mapRelation = {};
-    }
-    /**
-     * 组件被激活后执行，此时所有节点和组件均已创建完毕，此方法只执行一次
-     */
-    // onAwake(): void { }
-    onEnable() {
-      Laya.init(WIDTH, HEIGHT, Laya.WebGL);
-      console.log("Build Map UI!");
-      const { point, map } = mapBuilder();
-      this.mapPoint = point;
-      this.mapRelation = map;
-      this.map = [];
-      for (let i = 0; i < GRID_UNIT_H_NUM; i++) {
-        this.map.push(new Array(GRID_UNIT_W_NUM).fill(null));
-      }
-      this.map[0][0] = { type: "house", id: 0 };
-      this.idToMap[0] = [0, 0];
-      let nextY = 2;
-      for (let i = 1; i < point.length; i++) {
-        const curY = getRandom(nextY, GRID_UNIT_W_NUM - (point.length - i - 1) * 2 - 1);
-        nextY = curY + 2;
-        let nextX = 0;
-        for (let j = 0; j < point[i].length; j++) {
-          const curX = getRandom(nextX, GRID_UNIT_H_NUM - (point[i].length - j - 1) * 2 - 1);
-          nextX = curX + 2;
-          this.map[curX][curY] = { type: "house", id: point[i][j] };
-          this.idToMap[point[i][j]] = [curX, curY];
-        }
-      }
-      for (let source in map) {
-        for (let target in map[source]) {
-          this.PaveRoad(parseInt(source), parseInt(target));
-        }
-      }
-      this.onLoaded();
-    }
-    // 查找有效路径
-    PaveRoad(source, target) {
-      const [startX, startY] = this.idToMap[source];
-      const visited = /* @__PURE__ */ new Set();
-      visited.add(`${startX}-${startY}`);
-      const queue = [[this.idToMap[source]]];
-      while (queue.length) {
-        const parentPoints = queue[queue.length - 1];
-        const [[x, y]] = parentPoints;
-        const nextPointInfos = [];
-        const points = [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]];
-        if (points.some((point) => this.isSame(point, this.idToMap[target]))) {
-          break;
-        }
-        points.forEach((point) => {
-          if (!this.isValidPoint(point[0], point[1]) || visited.has(`${point[0]}-${point[1]}`)) {
-            return;
-          }
-          nextPointInfos.push({
-            point,
-            distance: this.cost(point, this.idToMap[source]) + this.cost(point, this.idToMap[target])
-          });
-          visited.add(`${point[0]}-${point[1]}`);
-        });
-        nextPointInfos.sort((a, b) => a.distance - b.distance || this.distance(a.point, this.idToMap[target]) - this.distance(b.point, this.idToMap[target]));
-        if (!nextPointInfos.length) {
-          parentPoints.shift();
-          if (!parentPoints.length) {
-            queue.pop();
-          }
-        } else {
-          queue.push(nextPointInfos.map((data) => data.point));
-        }
-      }
-      if (!queue.length) {
-        return;
-      }
-      for (let i = 1; i < queue.length; i++) {
-        const [[x, y]] = queue[i];
-        this.map[x][y] = { type: "road" };
-      }
-    }
-    isSame(cur, node) {
-      return cur[0] === node[0] && cur[1] === node[1];
-    }
-    cost(cur, node) {
-      const a = cur[0] - node[0], b = cur[1] - node[1];
-      return Math.abs(a) + Math.abs(b);
-    }
-    distance(cur, node) {
-      const a = cur[0] - node[0], b = cur[1] - node[1];
-      return Math.sqrt(a * a + b * b);
-    }
-    isValidPoint(x, y) {
-      var _a;
-      if (x < 0 || y < 0) {
-        return false;
-      }
-      if (x >= GRID_UNIT_H_NUM || y >= GRID_UNIT_W_NUM) {
-        return false;
-      }
-      if (((_a = this.map[x][y]) == null ? void 0 : _a.type) === "house") {
-        return false;
-      }
-      return true;
-    }
-    /**
-     * 组件被启用后执行，例如节点被添加到舞台后
-     */
-    onLoaded() {
-      var _a, _b;
-      const groundTexture = Texture3.create(Laya.loader.getRes("resources/tmw_desert_spacing.png"), 5 * 33 + 1, 3 * 33 + 1, 30, 30);
-      this.bg.graphics.fillTexture(groundTexture, 0, 0, WIDTH, HEIGHT);
-      this.building = new Laya.Sprite();
-      this.bg.addChild(this.building);
-      const houseTexture = Texture3.create(Laya.loader.getRes("resources/map/house.png"), 0, 0, 280, 280);
-      const roadTexture = Texture3.create(Laya.loader.getRes("resources/tmw_desert_spacing.png"), 1 * 33 + 1, 4 * 33 + 1, 30, 30);
-      for (let y = 0; y < this.map.length; y++) {
-        for (let x = 0; x < this.map[y].length; x++) {
-          if (((_a = this.map[y][x]) == null ? void 0 : _a.type) === "house") {
-            this.building.graphics.drawTexture(houseTexture, x * GRID_UNIT_W, y * GRID_UNIT_H, GRID_UNIT_W, GRID_UNIT_H);
-          } else if (((_b = this.map[y][x]) == null ? void 0 : _b.type) === "road") {
-            this.building.graphics.fillTexture(roadTexture, x * GRID_UNIT_W, y * GRID_UNIT_H, GRID_UNIT_W, GRID_UNIT_H);
-          }
-        }
-      }
-      this.building.pos(0, 0);
-    }
-    /**
-     * 组件被禁用时执行，例如从节点从舞台移除后
-     */
-    //onDisable(): void {}
-    /**
-     * 第一次执行update之前执行，只会执行一次
-     */
-    // onStart(): void { }
-    /**
-     * 手动调用节点销毁时执行
-     */
-    //onDestroy(): void {
-    /**
-     * 每帧更新时执行，尽量不要在这里写大循环逻辑或者使用getComponent方法
-     */
-    //onUpdate(): void {}
-    /**
-     * 每帧更新时执行，在update之后执行，尽量不要在这里写大循环逻辑或者使用getComponent方法
-     */
-    //onLateUpdate(): void {}
-    /**
-     * 鼠标点击后执行。与交互相关的还有onMouseDown等十多个函数，具体请参阅文档。
-     */
-    //onMouseClick(): void {}
-  };
-  __name(Script, "Script");
-  Script = __decorateClass([
-    regClass5("111dc0ae-4a43-4f82-8004-289f668e79f3", "../src/draft/MapUi.ts")
-  ], Script);
 })();
 //# sourceMappingURL=bundle.js.map

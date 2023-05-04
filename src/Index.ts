@@ -1,6 +1,8 @@
 import { IndexBase } from "./Index.generated";
 import { MapPanel } from "./ui/MapPanel";
 import Event = Laya.Event;
+import MapAction from "./ui/MapAction";
+import { LocalStorage } from "./storage/local_storage";
 
 const { regClass, property } = Laya;
 
@@ -8,7 +10,9 @@ const { regClass, property } = Laya;
 export class Index extends IndexBase {
     //declare owner : Laya.Sprite3D;
     private map: MapPanel;
-    
+    private lastMapInfo: MapAction;
+    private openid: string;
+
     constructor() {
         super();
     }
@@ -21,17 +25,8 @@ export class Index extends IndexBase {
     /**
      * 组件被启用后执行，例如节点被添加到舞台后
      */
-    onEnable(): void {
-        // 1. 初始化地图
-        this.map = new MapPanel(1136, 640);
-        this.map.generate();
-        this.addChild(this.map);
-        // 2. 鼠标交互
-        for (let id in this.map.buildingMapper) {
-            this.map.buildingMapper[id].sprite.on(Event.CLICK, () => {
-                this.map.highLightRoads(id);
-            })
-        }
+    async onEnable(): Promise<void> {
+        console.log("onEnable");
     }
 
     /**
@@ -47,7 +42,9 @@ export class Index extends IndexBase {
     /**
      * 手动调用节点销毁时执行
      */
-    //onDestroy(): void {
+    onDestroy(): void {
+        LocalStorage.setItem(this.openid, this.map.mapInfo);
+    }
 
     /**
      * 每帧更新时执行，尽量不要在这里写大循环逻辑或者使用getComponent方法
@@ -63,4 +60,31 @@ export class Index extends IndexBase {
      * 鼠标点击后执行。与交互相关的还有onMouseDown等十多个函数，具体请参阅文档。
      */
     //onMouseClick(): void {}
+
+    // 定时器回调函数
+    // onTimer() {
+    //     console.log("定时器触发");
+    //     LocalStorage.setItem(this.openid, this.map.mapInfo);
+    // }
+
+    // 新场景加载完成后执行
+    onOpened(param: any) {
+        this.openid = param["openid"]
+        if (this.openid != null) {
+            // 读取上次记录
+            this.lastMapInfo = LocalStorage.getItem(this.openid) as MapAction;
+        }
+        console.log("onOpened: " + this.openid + " " + this.lastMapInfo);
+        // 1. 初始化地图
+        this.map = new MapPanel(1136, 640);
+        this.map.generate(this.lastMapInfo);
+        this.addChild(this.map);
+        // 2. 鼠标交互
+        // for (let id in this.map.buildingMapper) {
+        //     this.map.buildingMapper[id].sprite.on(Event.CLICK, () => {
+        //         this.map.highLightRoads(id);
+        //     })
+        // }
+        // Laya.timer.loop(1000, this, this.onTimer);
+    }
 }

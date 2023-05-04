@@ -180,7 +180,7 @@ export function mapBuilder() {
     let resultRecord = [];
     function dps(pos: any, road: any[], value: number, event: any[]) {
         let value_ = 0;
-        let newEvent = [];
+        let newEvent = null;
         if (pos == pointNumber) {
             resultRecord.push({ value, road });
             if (minCause == 0 || minCause > value) {
@@ -219,18 +219,16 @@ export function mapBuilder() {
             if (event.length != 0) {
                 for (let i = 0; i < event.length; i++) {
                     let e = event[i];
+                    if (e.path == 0) continue;
                     if (e.value == 0) {
                         v = 0;
                     } else {
                         v += e.value;
                     }
-                    if (e.path == 0) {
-                        event.splice(i, 1);
-                        i--;
-                    }
+                    e.path--;
                 }
             }
-            dps(target, [...road, target], value + v + value_, [...event, newEvent]);
+            dps(target, [...road, target], value + v + value_, newEvent ? [...event, newEvent] : [...event]);
         }
     }
     function calculateValue() {
@@ -254,7 +252,7 @@ export function mapBuilder() {
     // );
 
     calculateValue();
-    const defaultValue = Math.round(minCause + (maxCause - minCause) * 0.3);
+    const defaultValue = Math.round(minCause + (maxCause - minCause) * 0.1);
 
     // console.log(`最少费用:`, minCause);
     // console.log(`最短路径:`, minPath);
