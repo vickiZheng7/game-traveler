@@ -14,11 +14,15 @@
       "dom.iterable",
       "scripthost",
       "es2015.promise"
-    ]
+    ],
+    "moduleResolution": "node",
   },
   "include": [
     "./assets",
     "./src",
     "./engine"
+  ],
+  "exclude": [
+    "node_modules"
   ]
 }
