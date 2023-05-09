@@ -615,7 +615,6 @@
     }
   };
   __name(LocalStorage, "LocalStorage");
-  var testID = "test";
 
   // src/Index.ts
   var { regClass: regClass3, property: property3 } = Laya;
@@ -632,16 +631,7 @@
      */
     onEnable() {
       return __async(this, null, function* () {
-        this.map = new MapPanel(1136, 640);
-        let lastMapInfo = null;
-        if (testID) {
-          this.openid = testID;
-        } else {
-          this.openid = yield login();
-        }
-        lastMapInfo = LocalStorage.getItem(this.openid);
-        this.map.generate(lastMapInfo);
-        this.addChild(this.map);
+        console.log("onEnable");
       });
     }
     /**
@@ -656,7 +646,7 @@
      * 手动调用节点销毁时执行
      */
     onDestroy() {
-      LocalStorage.setItem(testID, this.map.mapInfo);
+      LocalStorage.setItem(this.openid, this.map.mapInfo);
     }
     /**
      * 每帧更新时执行，尽量不要在这里写大循环逻辑或者使用getComponent方法
@@ -675,6 +665,17 @@
     //     console.log("定时器触发");
     //     LocalStorage.setItem(this.openid, this.map.mapInfo);
     // }
+    // 新场景加载完成后执行
+    onOpened(param) {
+      this.openid = param["openid"];
+      if (this.openid != null) {
+        this.lastMapInfo = LocalStorage.getItem(this.openid);
+      }
+      console.log("onOpened: " + this.openid + " " + this.lastMapInfo);
+      this.map = new MapPanel(1136, 640);
+      this.map.generate(this.lastMapInfo);
+      this.addChild(this.map);
+    }
   };
   __name(Index, "Index");
   Index = __decorateClass([
@@ -685,6 +686,97 @@
   var LoadingBase = class extends Laya.Scene {
   };
   __name(LoadingBase, "LoadingBase");
+
+  // src/login/wx_login.ts
+  function checkUserAuth() {
+    return new Promise((resolve, reject) => {
+      wx.getSetting({
+        success: (res) => {
+          if (res.authSetting["scope.userInfo"]) {
+            resolve(true);
+          } else {
+            resolve(false);
+          }
+        },
+        fail: (error) => {
+          reject(error);
+        }
+      });
+    });
+  }
+  __name(checkUserAuth, "checkUserAuth");
+  function requestUserAuth() {
+    return new Promise((resolve, reject) => {
+      wx.getUserInfo({
+        withCredentials: true,
+        success: (res) => {
+          resolve(res.userInfo);
+        },
+        fail: (error) => {
+          reject(error);
+        }
+      });
+    });
+  }
+  __name(requestUserAuth, "requestUserAuth");
+  function wxLogin() {
+    return new Promise((resolve, reject) => {
+      wx.login({
+        success: (res) => {
+          resolve(res);
+        },
+        fail: (error) => {
+          reject(error);
+        }
+      });
+    });
+  }
+  __name(wxLogin, "wxLogin");
+  function login() {
+    return __async(this, null, function* () {
+      try {
+        const isAuth = yield checkUserAuth();
+        if (!isAuth) {
+          yield requestUserAuth();
+        }
+        const wxLoginRes = yield wxLogin();
+        console.log("wxLoginRes: " + wxLoginRes);
+        if (wxLoginRes.code) {
+          const code2SessionRes = yield wxCode2Session(wxLoginRes.code);
+          console.log("code2SessionRes: " + code2SessionRes);
+          return code2SessionRes;
+        }
+      } catch (error) {
+        console.log("login err: " + error);
+      }
+      return null;
+    });
+  }
+  __name(login, "login");
+  function wxCode2Session(code) {
+    return __async(this, null, function* () {
+      return new Promise((resolve, reject) => {
+        wx.request({
+          url: "https://api.weixin.qq.com/sns/jscode2session",
+          data: {
+            appid: "your_appid",
+            secret: "your_secret",
+            js_code: code,
+            grant_type: "authorization_code"
+          },
+          success(res) {
+            console.log("resp.data: " + res.data);
+            resolve(res);
+          },
+          fail(error) {
+            console.log("\u5FAE\u4FE1\u767B\u5F55\u5931\u8D25");
+            reject(error);
+          }
+        });
+      });
+    });
+  }
+  __name(wxCode2Session, "wxCode2Session");
 
   // src/Loading.ts
   var { regClass: regClass4 } = Laya;
@@ -702,12 +794,18 @@
           "atlas/comp/progress$bar.png"
         ]
       ).then(() => {
-        Laya.loader.load(resources, null, Laya.Handler.create(this, this.onLoading, null, false)).then(() => {
+        Laya.loader.load(resources, null, Laya.Handler.create(this, this.onLoading, null, false)).then(() => __async(this, null, function* () {
+          let openid = LocalStorage.getItem("game_traveler_user_id");
+          if (openid == null) {
+            console.log("openid\u4E3A\u7A7A, \u5C1D\u8BD5\u5FAE\u4FE1\u767B\u5F55");
+            openid = yield login();
+            console.log("openid: " + openid);
+          }
           this.progress.value = 0.98;
           Laya.timer.once(1e3, this, () => {
-            Laya.Scene.open("scenes/Index.ls");
+            Laya.Scene.open("scenes/Index.ls", true, { "openid": openid });
           });
-        });
+        }));
         Laya.loader.on(Laya.Event.ERROR, this, this.onError);
       });
     }

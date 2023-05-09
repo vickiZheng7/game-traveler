@@ -1,5 +1,3 @@
-import { testID } from "../storage/local_storage";
-
 // 判断用户是否授权登录小程序
 function checkUserAuth(): Promise<boolean> {
     return new Promise((resolve, reject) => {
@@ -50,20 +48,25 @@ function wxLogin(): Promise<WechatMiniprogram.LoginSuccessCallbackResult> {
 }
 
 // 调用以上三个函数实现完整的登录流程
-async function login(): Promise<string> {
-    const isAuth = await checkUserAuth();
-    if (!isAuth) {
-        await requestUserAuth();
+export async function login(): Promise<string> {
+    try {
+        const isAuth = await checkUserAuth();
+        if (!isAuth) {
+            await requestUserAuth();
+        }
+        const wxLoginRes = await wxLogin();
+        // 在这里进行登录成功后的后续操作
+        console.log("wxLoginRes: " + wxLoginRes)
+        if (wxLoginRes.code) {
+            const code2SessionRes = await wxCode2Session(wxLoginRes.code);
+            console.log("code2SessionRes: " + code2SessionRes)
+            return code2SessionRes
+        }
+    } catch (error) {
+        console.log("login err: " + error)
     }
-    const wxLoginRes = await wxLogin();
-    // 在这里进行登录成功后的后续操作
-    console.log("wxLoginRes: " + wxLoginRes)
-    if (wxLoginRes.code) {
-        const code2SessionRes = await wxCode2Session(wxLoginRes.code);
-        console.log("code2SessionRes: " + code2SessionRes)
-        return code2SessionRes
-    }
-    return testID
+    
+    return null
 }
 
 async function wxCode2Session(code: string): Promise<any> {

@@ -2,7 +2,7 @@ import { IndexBase } from "./Index.generated";
 import { MapPanel } from "./ui/MapPanel";
 import Event = Laya.Event;
 import MapAction from "./ui/MapAction";
-import { LocalStorage, testID } from "./storage/local_storage";
+import { LocalStorage } from "./storage/local_storage";
 
 const { regClass, property } = Laya;
 
@@ -10,6 +10,7 @@ const { regClass, property } = Laya;
 export class Index extends IndexBase {
     //declare owner : Laya.Sprite3D;
     private map: MapPanel;
+    private lastMapInfo: MapAction;
     private openid: string;
 
     constructor() {
@@ -25,24 +26,7 @@ export class Index extends IndexBase {
      * 组件被启用后执行，例如节点被添加到舞台后
      */
     async onEnable(): Promise<void> {
-        // 1. 初始化地图
-        this.map = new MapPanel(1136, 640);
-        let lastMapInfo = null;
-        if (testID) {
-            this.openid = testID
-        } else {
-            this.openid = await login();
-        }
-        lastMapInfo = LocalStorage.getItem(this.openid) as MapAction;
-        this.map.generate(lastMapInfo);
-        this.addChild(this.map);
-        // 2. 鼠标交互
-        // for (let id in this.map.buildingMapper) {
-        //     this.map.buildingMapper[id].sprite.on(Event.CLICK, () => {
-        //         this.map.highLightRoads(id);
-        //     })
-        // }
-        // Laya.timer.loop(1000, this, this.onTimer);
+        console.log("onEnable");
     }
 
     /**
@@ -59,7 +43,7 @@ export class Index extends IndexBase {
      * 手动调用节点销毁时执行
      */
     onDestroy(): void {
-        LocalStorage.setItem(testID, this.map.mapInfo);
+        LocalStorage.setItem(this.openid, this.map.mapInfo);
     }
 
     /**
@@ -82,4 +66,25 @@ export class Index extends IndexBase {
     //     console.log("定时器触发");
     //     LocalStorage.setItem(this.openid, this.map.mapInfo);
     // }
+
+    // 新场景加载完成后执行
+    onOpened(param: any) {
+        this.openid = param["openid"]
+        if (this.openid != null) {
+            // 读取上次记录
+            this.lastMapInfo = LocalStorage.getItem(this.openid) as MapAction;
+        }
+        console.log("onOpened: " + this.openid + " " + this.lastMapInfo);
+        // 1. 初始化地图
+        this.map = new MapPanel(1136, 640);
+        this.map.generate(this.lastMapInfo);
+        this.addChild(this.map);
+        // 2. 鼠标交互
+        // for (let id in this.map.buildingMapper) {
+        //     this.map.buildingMapper[id].sprite.on(Event.CLICK, () => {
+        //         this.map.highLightRoads(id);
+        //     })
+        // }
+        // Laya.timer.loop(1000, this, this.onTimer);
+    }
 }
