@@ -57,13 +57,16 @@ export class Loading extends LoadingBase {
         //接近完成加载时，让显示进度比实际进度慢一点，这是为打开场景时的自动加载预留，尤其是要打开的场景资源多，并没有完全放到预加载中，还需要再自动加载一部分时。
         if (progress > 0.92) this.progress.value = 0.95;
         else this.progress.value = progress;
-        Laya.Browser.window.wx.config({
-            debug: false, // 是否开启调试模式
-            appId: 'your_app_id', // 公众号的唯一标识
-            timestamp: 'your_timestamp', // 生成签名的时间戳
-            nonceStr: 'your_nonce_str', // 生成签名的随机串
-            signature: 'your_signature', // 签名
-            jsApiList: ['your_js_api_list'], // 需要使用的JS接口列表
-          });          
+        if (Laya.Browser.onMiniGame) {
+            Laya.Browser.window.wx.config({
+                debug: false, // 是否开启调试模式
+                appId: 'your_app_id', // 公众号的唯一标识
+                timestamp: 'your_timestamp', // 生成签名的时间戳
+                nonceStr: 'your_nonce_str', // 生成签名的随机串
+                signature: 'your_signature', // 签名
+                jsApiList: ['your_js_api_list'], // 需要使用的JS接口列表
+            });
+        }
+              
     }
 }
