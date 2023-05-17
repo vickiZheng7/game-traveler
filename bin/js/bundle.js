@@ -474,11 +474,9 @@
           }
         }
       }
-      console.log(this.map);
     }
     drawMap() {
       this.drawGround();
-      this.drawRoads();
       this.drawBuildings();
       this.drawCharacter();
     }
@@ -492,11 +490,11 @@
       for (let source in this.buildingMapper) {
         for (let target in this.buildingMapper[source].targets) {
           const { points } = this.buildingMapper[source].targets[target];
-          this.drawRoad(this.roadSprite, this.buildingMapper[source].targets[target]);
+          this.drawRoad(this.roadSprite, points);
         }
       }
     }
-    drawRoad(sprite, { points }, color = "black", width = 1) {
+    _drawRoad(sprite, { points }, color = "black", width = 1) {
       sprite.graphics.drawLines(
         this.getXPos(points[0].x, "center"),
         this.getYPos(points[0].y, "center"),
@@ -504,6 +502,68 @@
         color,
         width
       );
+    }
+    drawRoad(sprite, points, alpha = 1) {
+      const roadsResource = Laya.loader.getRes("resources/map/roads.jpeg");
+      const straightTexture = Texture2.create(roadsResource, 540, 0, 540, 540);
+      const turnTexture = Texture2.create(roadsResource, 0, 540, 540, 540);
+      for (let i = 1; i < points.length - 1; i++) {
+        const x = this.getXPos(points[i].x);
+        const y = this.getYPos(points[i].y);
+        if (points[i + 1].isTurn) {
+          sprite.graphics.drawTexture(
+            turnTexture,
+            x,
+            y,
+            this.gridColumnWidth,
+            this.gridRowHeight,
+            this.getRotateMatrix(this.getTurnAngle(points[i - 1], points[i], points[i + 1]), x, y),
+            alpha
+          );
+          continue;
+        }
+        sprite.graphics.drawTexture(
+          straightTexture,
+          x,
+          y,
+          this.gridColumnWidth,
+          this.gridRowHeight,
+          this.getRotateMatrix(this.getStraightAngle(points[i], points[i + 1]), x, y),
+          alpha
+        );
+      }
+    }
+    getRotateMatrix(angle, x, y) {
+      const matrix = new Laya.Matrix();
+      matrix.translate(-x - this.gridColumnWidth / 2, -y - this.gridRowHeight / 2);
+      matrix.rotate(angle);
+      matrix.translate(x + this.gridColumnWidth / 2, y + this.gridRowHeight / 2);
+      return matrix;
+    }
+    getStraightAngle(start, end) {
+      if (end.x < start.x) {
+        return Math.PI * 3 / 2;
+      }
+      if (end.x > start.x) {
+        return Math.PI / 2;
+      }
+      if (end.y < start.y) {
+        return 0;
+      }
+      return Math.PI;
+    }
+    getTurnAngle(prev, current, next) {
+      if (prev.y < current.y || next.y < current.y) {
+        if (prev.x > current.x || next.x > current.x) {
+          return 0;
+        }
+        return Math.PI * 3 / 2;
+      } else {
+        if (prev.x > current.x || next.x > current.x) {
+          return Math.PI / 2;
+        }
+        return Math.PI;
+      }
     }
     drawBuildings() {
       var _a;
@@ -527,7 +587,6 @@
                 let count = 0;
                 const len = this.buildingMapper[this.mapInfo.position].targets[this.map[y][x].id].points.length;
                 this.buildingMapper[this.mapInfo.position].targets[this.map[y][x].id].points.map((e) => {
-                  console.log(e.x, e.y);
                   var tween = Laya.Tween.to(this.characterSprite, { x: this.getXPos(e.x), y: this.getYPos(e.y) }, 200, null, null, count * 200);
                   count++;
                 });
@@ -557,7 +616,8 @@
         return;
       }
       for (let target in building.targets) {
-        this.drawRoad(this.highLightRoadSprite, building.targets[target], "black", 5);
+        console.log(building.targets[target].points);
+        this.drawRoad(this.highLightRoadSprite, building.targets[target].points);
       }
     }
     calcPointValue(start, end) {
@@ -567,14 +627,11 @@
       if (!start || !end) {
         return [];
       }
-      const directions = [[0, 1], [1, 0], [0, -1], [-1, 0]];
-      const queue = [[__spreadProps(__spreadValues({}, start), { turn: 0 })]];
-      const visited = /* @__PURE__ */ new Set();
-      visited.add(`${start.x}-${start.y}`);
-      while (queue.length) {
-        const curPoints = queue[0];
-        const [curPoint] = curPoints;
-        let isEnd = false;
+      const directions = [[0, 1], [-1, 0], [0, -1], [1, 0]];
+      const queue = [[__spreadProps(__spreadValues({}, start), { turn: 0, value: this.calcPointValue(start, end) })]];
+      while (queue.length && (queue[0][0].x !== end.x || queue[0][0].y !== end.y)) {
+        const curPoints = queue.shift();
+        const [curPoint, prevPoint] = curPoints;
         const nextPoints = [];
         for (let i = 0; i < directions.length; i++) {
           const nextPoint = {
@@ -582,47 +639,30 @@
             y: curPoint.y + directions[i][1],
             turn: curPoint.turn || 0
           };
-          if (nextPoint.x === end.x && nextPoint.y === end.y) {
-            isEnd = true;
-            queue.unshift([end]);
-            break;
-          }
-          if (nextPoint.x < 0 || nextPoint.y < 0 || nextPoint.x >= this.gridColumns || nextPoint.y >= this.gridRows || this.map[nextPoint.y][nextPoint.x] !== null || visited.has(`${nextPoint.x}-${nextPoint.y}`)) {
+          if (nextPoint.x < 0 || nextPoint.y < 0 || nextPoint.x >= this.gridColumns || nextPoint.y >= this.gridRows || curPoints.findIndex((point) => point.x === nextPoint.x && point.y === nextPoint.y) !== -1) {
             continue;
           }
-          if (queue[1]) {
-            const [prevPoint] = queue[1];
+          if (prevPoint) {
             if ((/* @__PURE__ */ new Set([prevPoint.x, curPoint.x, nextPoint.x])).size !== 1 && (/* @__PURE__ */ new Set([prevPoint.y, curPoint.y, nextPoint.y])).size !== 1) {
               nextPoint.turn++;
               nextPoint.isTurn = true;
             }
           }
-          nextPoint.value = this.calcPointValue(start, nextPoint) + this.calcPointValue(end, nextPoint);
+          if (this.map[nextPoint.y][nextPoint.x] !== null && (nextPoint.x !== end.x || nextPoint.y !== end.y)) {
+            continue;
+          }
+          nextPoint.value = curPoints.length + this.calcPointValue(end, nextPoint);
           nextPoints.push(nextPoint);
         }
-        if (isEnd) {
-          break;
-        }
         if (nextPoints.length) {
-          nextPoints.sort((a, b) => a.value === b.value ? a.turn - b.turn : a.value - b.value);
-          queue.unshift(nextPoints);
-          visited.add(`${nextPoints[0].x}-${nextPoints[0].y}`);
-          continue;
-        }
-        while (queue.length) {
-          queue[0].shift();
-          if (queue[0].length) {
-            const [curPoint2] = queue[0];
-            visited.add(`${curPoint2.x}-${curPoint2.y}`);
-            break;
-          }
-          queue.shift();
+          queue.unshift(...nextPoints.map((point) => [point, ...curPoints]));
+          queue.sort((a, b) => a[0].value === b[0].value ? a[0].turn - b[0].turn : a[0].value - b[0].value);
         }
       }
       if (!queue.length) {
         return [];
       }
-      return queue.reverse().map((points) => points[0]);
+      return queue[0].reverse();
     }
     getRandom(n, m) {
       return Math.floor(Math.random() * (m - n + 1) + n);
@@ -830,7 +870,8 @@
   var resources = [
     "resources/tmw_desert_spacing.png",
     "resources/map/house.png",
-    "resources/map/car.png"
+    "resources/map/car.png",
+    "resources/map/roads.jpeg"
   ];
   var Loading = class extends LoadingBase {
     onAwake() {

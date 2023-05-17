@@ -135,7 +135,6 @@ export class MapPanel extends Laya.Panel {
                 }
             }
         }
-        console.log(this.map)
     }
 
     drawMap() {
@@ -160,12 +159,12 @@ export class MapPanel extends Laya.Panel {
         for (let source in this.buildingMapper) {
             for (let target in this.buildingMapper[source].targets) {
                 const { points } = this.buildingMapper[source].targets[target];
-                this.drawRoad(this.roadSprite, this.buildingMapper[source].targets[target]);
+                this.drawRoad(this.roadSprite, points);
             }
         }
     }
 
-    drawRoad(sprite: Laya.Sprite, { points }: IRoad, color: any = 'black', width: number = 1) {
+    _drawRoad(sprite: Laya.Sprite, { points }: IRoad, color: any = 'black', width: number = 1) {
         sprite.graphics.drawLines(
             this.getXPos(points[0].x, 'center'),
             this.getYPos(points[0].y, 'center'),
@@ -173,6 +172,78 @@ export class MapPanel extends Laya.Panel {
             color,
             width
         );
+    }
+
+    drawRoad(sprite: Laya.Sprite, points: IRoadPoint[], alpha: number = 1) {
+        // 1. 加载素材图
+        const roadsResource = Laya.loader.getRes("resources/map/roads.jpeg");
+        // 2. 截取纹理图
+        const straightTexture = Texture.create(roadsResource, 540, 0, 540, 540);
+        const turnTexture = Texture.create(roadsResource, 0, 540, 540, 540);
+        for (let i = 1; i < points.length - 1; i++) {
+            // 1. 如果是拐弯
+            const x = this.getXPos(points[i].x);
+            const y = this.getYPos(points[i].y);
+            if (points[i + 1].isTurn) {
+                sprite.graphics.drawTexture(
+                    turnTexture,
+                    x,
+                    y,
+                    this.gridColumnWidth,
+                    this.gridRowHeight,
+                    this.getRotateMatrix(this.getTurnAngle(points[i - 1], points[i], points[i + 1]), x, y),
+                    alpha
+                )
+                continue;
+            }
+            // 2. 如果是直行
+            sprite.graphics.drawTexture(
+                straightTexture,
+                x,
+                y,
+                this.gridColumnWidth,
+                this.gridRowHeight,
+                this.getRotateMatrix(this.getStraightAngle(points[i], points[i + 1]), x, y),
+                alpha
+            )
+        }
+    }
+
+    getRotateMatrix(angle: number, x: number, y: number) {
+        const matrix = new Laya.Matrix();
+        matrix.translate(- x - this.gridColumnWidth / 2, - y - this.gridRowHeight / 2);
+        matrix.rotate(angle);
+        matrix.translate(x + this.gridColumnWidth / 2, y + this.gridRowHeight / 2);
+        return matrix;
+    }
+
+    getStraightAngle(start: IRoadPoint, end: IRoadPoint): number {
+        if (end.x < start.x) {
+            return Math.PI * 3 / 2;
+        }
+        if (end.x > start.x) {
+            return Math.PI / 2;
+        }
+        if (end.y < start.y) {
+            return 0;
+        }
+        return Math.PI;
+    }
+    getTurnAngle(prev: IRoadPoint, current: IRoadPoint, next: IRoadPoint): number {
+        // 一个点在上
+        if (prev.y < current.y || next.y < current.y) {
+            // 一个点在右
+            if (prev.x > current.x || next.x > current.x) {
+                return 0;
+            }
+            return Math.PI * 3 / 2;
+        } else {
+            // 一个点在右
+            if (prev.x > current.x || next.x > current.x) {
+                return Math.PI / 2;
+            }
+            return Math.PI;
+        }
     }
 
     drawBuildings() {
@@ -230,7 +301,7 @@ export class MapPanel extends Laya.Panel {
             return;
         }
         for (let target in building.targets) {
-            this.drawRoad(this.highLightRoadSprite, building.targets[target], 'black', 5);
+            this.drawRoad(this.highLightRoadSprite, building.targets[target].points);
         }
     }
 
@@ -242,19 +313,15 @@ export class MapPanel extends Laya.Panel {
         if (!start || !end) {
             return [];
         }
-        const directions = [[0, 1], [1, 0], [0, -1], [-1, 0]];
+        const directions = [[0, 1], [-1, 0], [0, -1], [1, 0]];
         // 路径顺序
-        const queue: IRoadPoint[][] = [[{ ...start, turn: 0 }]];
-        // 访问过的位置
-        const visited = new Set();
-        visited.add(`${start.x}-${start.y}`);
-        // 往下查找
-        while (queue.length) {
+        const queue: IRoadPoint[][] = [[{ ...start, turn: 0, value: this.calcPointValue(start, end)}]];
+        // 往下查找：广度优先
+        while (queue.length && (queue[0][0].x !== end.x || queue[0][0].y !== end.y)) {
             // 1. 寻找下一个点
-            const curPoints = queue[0];
-            const [curPoint] = curPoints;
+            const curPoints = queue.shift();
+            const [curPoint, prevPoint] = curPoints;
 
-            let isEnd = false;
             const nextPoints = [];
             for (let i = 0; i < directions.length; i++) {
                 const nextPoint: IRoadPoint = {
@@ -262,59 +329,37 @@ export class MapPanel extends Laya.Panel {
                     y: curPoint.y + directions[i][1],
                     turn: curPoint.turn || 0
                 };
-                // 1. 判断节点是否为终点
-                if (nextPoint.x === end.x && nextPoint.y === end.y) {
-                    isEnd = true;
-                    queue.unshift([end]);
-                    break;
-                }
-                // 2. 判断节点是否有效
+                // 1. 判断节点是否有效
                 if (nextPoint.x < 0 || nextPoint.y < 0 ||
                     nextPoint.x >= this.gridColumns || nextPoint.y >= this.gridRows ||
-                    this.map[nextPoint.y][nextPoint.x] !== null ||
-                    visited.has(`${nextPoint.x}-${nextPoint.y}`)) {
+                    curPoints.findIndex((point) => point.x === nextPoint.x && point.y === nextPoint.y) !== -1) {
                     continue;
                 }
-                // 3. 判断节点是否拐弯
-                if (queue[1]) {
-                    const [prevPoint] = queue[1];
+                // 2. 判断节点是否拐弯
+                if (prevPoint) {
                     if (new Set([prevPoint.x, curPoint.x, nextPoint.x]).size !== 1 &&
                         new Set([prevPoint.y, curPoint.y, nextPoint.y]).size !== 1) {
                         nextPoint.turn++;
                         nextPoint.isTurn = true;
                     }
                 }
+                // 3. 如果是障碍物且不为终点，跳过
+                if (this.map[nextPoint.y][nextPoint.x] !== null && (nextPoint.x !== end.x || nextPoint.y !== end.y)) {
+                    continue;
+                }
                 // 4. 计算节点的cost
-                nextPoint.value = this.calcPointValue(start, nextPoint) + this.calcPointValue(end, nextPoint);
+                nextPoint.value = curPoints.length + this.calcPointValue(end, nextPoint);
                 nextPoints.push(nextPoint);
             }
-            if (isEnd) {
-                break;
-            }
             if (nextPoints.length) {
-                nextPoints.sort((a, b) => a.value === b.value ? a.turn - b.turn : a.value - b.value);
-                queue.unshift(nextPoints);
-                visited.add(`${nextPoints[0].x}-${nextPoints[0].y}`)
-                continue;
-            }
-            // 2. 回到上一个节点
-            while (queue.length) {
-                // 1. 移除第一个节点
-                queue[0].shift();
-                // 2. 如果非空，继续往下
-                if (queue[0].length) {
-                    const [curPoint] = queue[0];
-                    visited.add(`${curPoint.x}-${curPoint.y}`);
-                    break;
-                }
-                // 3. 为空，删掉节点
-                queue.shift();
+                queue.unshift(...nextPoints.map((point) => [point, ...curPoints]));
+                queue.sort((a, b) => a[0].value === b[0].value ? a[0].turn - b[0].turn : a[0].value - b[0].value);
             }
         }
         if (!queue.length) {
             return [];
         }
-        return queue.reverse().map(points => points[0]);
+        return queue[0].reverse();
     }
 
     getRandom(n: number, m: number): number {
