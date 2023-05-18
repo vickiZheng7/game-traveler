@@ -4,7 +4,8 @@ import { LocalStorage } from "./storage/local_storage";
 import { login } from "./login/wx_login";
 
 const resources = [
-    "resources/tmw_desert_spacing.png",
+    "resources/ground.png",
+    "resources/map/guangzhoutower.png",
     "resources/map/house.png",
     "resources/map/car.png",
     "resources/map/roads.jpeg"

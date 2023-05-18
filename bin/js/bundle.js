@@ -63,8 +63,17 @@
       super();
       this.width = 40;
       this.height = 40;
-      const houseTexture = Texture.create(Laya.loader.getRes("resources/map/house.png"), 0, 0, 280, 280);
-      this.graphics.drawTexture(houseTexture, 0, 0, this.width, this.height);
+      this.draw();
+    }
+    draw() {
+      let texture;
+      if (Math.ceil(Math.random() * 20) === 1) {
+        texture = Texture.create(Laya.loader.getRes("resources/map/guangzhoutower.png"), 140, 0, 232, 512);
+        this.graphics.drawTexture(texture, 0, -this.height, this.width, this.height * 2);
+      } else {
+        texture = Texture.create(Laya.loader.getRes("resources/map/house.png"), 0, 0, 280, 280);
+        this.graphics.drawTexture(texture, 0, 0, this.width, this.height);
+      }
     }
   };
   __name(Building, "Building");
@@ -482,7 +491,7 @@
     }
     drawGround() {
       this.graphics.clear();
-      const groundTexture = Texture2.create(Laya.loader.getRes("resources/tmw_desert_spacing.png"), 5 * 33 + 1, 3 * 33 + 1, 30, 30);
+      const groundTexture = Texture2.create(Laya.loader.getRes("resources/ground.png"), 0, 0, 30, 30);
       this.graphics.fillTexture(groundTexture, 0, 0, this.width, this.height);
     }
     drawRoads() {
@@ -569,7 +578,6 @@
       var _a;
       this.buildingSprite.graphics.clear();
       this.buildingSprite.destroyChildren();
-      const houseTexture = Texture2.create(Laya.loader.getRes("resources/map/house.png"), 0, 0, 280, 280);
       for (let y = 0; y < this.map.length; y++) {
         for (let x = 0; x < this.map[y].length; x++) {
           if (((_a = this.map[y][x]) == null ? void 0 : _a.id) !== void 0) {
@@ -587,6 +595,7 @@
                 let count = 0;
                 const len = this.buildingMapper[this.mapInfo.position].targets[this.map[y][x].id].points.length;
                 this.buildingMapper[this.mapInfo.position].targets[this.map[y][x].id].points.map((e) => {
+                  console.log(e.x, e.y);
                   var tween = Laya.Tween.to(this.characterSprite, { x: this.getXPos(e.x), y: this.getYPos(e.y) }, 200, null, null, count * 200);
                   count++;
                 });
@@ -616,7 +625,6 @@
         return;
       }
       for (let target in building.targets) {
-        console.log(building.targets[target].points);
         this.drawRoad(this.highLightRoadSprite, building.targets[target].points);
       }
     }
@@ -868,7 +876,8 @@
   // src/Loading.ts
   var { regClass: regClass4 } = Laya;
   var resources = [
-    "resources/tmw_desert_spacing.png",
+    "resources/ground.png",
+    "resources/map/guangzhoutower.png",
     "resources/map/house.png",
     "resources/map/car.png",
     "resources/map/roads.jpeg"

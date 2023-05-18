@@ -148,7 +148,7 @@ export class MapPanel extends Laya.Panel {
         // 清除历史痕迹
         this.graphics.clear();
         // 纹理绘制
-        const groundTexture: Texture = Texture.create(Laya.loader.getRes("resources/tmw_desert_spacing.png"), 5 * 33 + 1, 3 * 33 + 1, 30, 30);
+        const groundTexture: Texture = Texture.create(Laya.loader.getRes("resources/ground.png"), 0, 0, 30, 30);
         this.graphics.fillTexture(groundTexture, 0, 0, this.width, this.height);
     }
 
@@ -251,7 +251,6 @@ export class MapPanel extends Laya.Panel {
         this.buildingSprite.graphics.clear();
         this.buildingSprite.destroyChildren();
         // 建筑物绘制
-        const houseTexture: Texture = Texture.create(Laya.loader.getRes("resources/map/house.png"), 0, 0, 280, 280);
         for (let y = 0; y < this.map.length; y++) {
             for (let x = 0; x < this.map[y].length; x++) {
                 if (this.map[y][x]?.id !== undefined) {
