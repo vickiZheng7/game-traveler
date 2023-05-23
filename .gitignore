@@ -3,3 +3,5 @@ library
 local
 .vscode
 .DS_Store
+node_modules
+release

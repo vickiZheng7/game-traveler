@@ -156,7 +156,6 @@
       ).then(() => {
         Laya.loader.load(resources, null, Laya.Handler.create(this, this.onLoading, null, false)).then(() => __async(this, null, function* () {
           let openid = LocalStorage.getItem("game_traveler_user_id");
-          let lastMapInfo = null;
           if (openid == null) {
             console.log("openid\u4E3A\u7A7A, \u5C1D\u8BD5\u5FAE\u4FE1\u767B\u5F55");
             openid = yield login();
@@ -185,20 +184,22 @@
         this.progress.value = 0.95;
       else
         this.progress.value = progress;
-      Laya.Browser.window.wx.config({
-        debug: false,
-        // 是否开启调试模式
-        appId: "your_app_id",
-        // 公众号的唯一标识
-        timestamp: "your_timestamp",
-        // 生成签名的时间戳
-        nonceStr: "your_nonce_str",
-        // 生成签名的随机串
-        signature: "your_signature",
-        // 签名
-        jsApiList: ["your_js_api_list"]
-        // 需要使用的JS接口列表
-      });
+      if (Laya.Browser.onMiniGame) {
+        Laya.Browser.window.wx.config({
+          debug: false,
+          // 是否开启调试模式
+          appId: "your_app_id",
+          // 公众号的唯一标识
+          timestamp: "your_timestamp",
+          // 生成签名的时间戳
+          nonceStr: "your_nonce_str",
+          // 生成签名的随机串
+          signature: "your_signature",
+          // 签名
+          jsApiList: ["your_js_api_list"]
+          // 需要使用的JS接口列表
+        });
+      }
     }
   };
   Loading = __decorateClass([

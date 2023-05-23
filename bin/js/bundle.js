@@ -1,6 +1,24 @@
 (() => {
   var __defProp = Object.defineProperty;
+  var __defProps = Object.defineProperties;
   var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+  var __getOwnPropDescs = Object.getOwnPropertyDescriptors;
+  var __getOwnPropSymbols = Object.getOwnPropertySymbols;
+  var __hasOwnProp = Object.prototype.hasOwnProperty;
+  var __propIsEnum = Object.prototype.propertyIsEnumerable;
+  var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+  var __spreadValues = (a, b) => {
+    for (var prop in b ||= {})
+      if (__hasOwnProp.call(b, prop))
+        __defNormalProp(a, prop, b[prop]);
+    if (__getOwnPropSymbols)
+      for (var prop of __getOwnPropSymbols(b)) {
+        if (__propIsEnum.call(b, prop))
+          __defNormalProp(a, prop, b[prop]);
+      }
+    return a;
+  };
+  var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
   var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
   var __decorateClass = (decorators, target, key, kind) => {
     var result = kind > 1 ? void 0 : kind ? __getOwnPropDesc(target, key) : target;
@@ -45,8 +63,17 @@
       super();
       this.width = 40;
       this.height = 40;
-      const houseTexture = Texture.create(Laya.loader.getRes("resources/map/house.png"), 0, 0, 280, 280);
-      this.graphics.drawTexture(houseTexture, 0, 0, this.width, this.height);
+      this.draw();
+    }
+    draw() {
+      let texture;
+      if (Math.ceil(Math.random() * 20) === 1) {
+        texture = Texture.create(Laya.loader.getRes("resources/map/guangzhoutower.png"), 140, 0, 232, 512);
+        this.graphics.drawTexture(texture, 0, -this.height, this.width, this.height * 2);
+      } else {
+        texture = Texture.create(Laya.loader.getRes("resources/map/house.png"), 0, 0, 280, 280);
+        this.graphics.drawTexture(texture, 0, 0, this.width, this.height);
+      }
     }
   };
   __name(Building, "Building");
@@ -459,13 +486,12 @@
     }
     drawMap() {
       this.drawGround();
-      this.drawRoads();
       this.drawBuildings();
       this.drawCharacter();
     }
     drawGround() {
       this.graphics.clear();
-      const groundTexture = Texture2.create(Laya.loader.getRes("resources/tmw_desert_spacing.png"), 5 * 33 + 1, 3 * 33 + 1, 30, 30);
+      const groundTexture = Texture2.create(Laya.loader.getRes("resources/ground.png"), 0, 0, 30, 30);
       this.graphics.fillTexture(groundTexture, 0, 0, this.width, this.height);
     }
     drawRoads() {
@@ -473,11 +499,11 @@
       for (let source in this.buildingMapper) {
         for (let target in this.buildingMapper[source].targets) {
           const { points } = this.buildingMapper[source].targets[target];
-          this.drawRoad(this.roadSprite, this.buildingMapper[source].targets[target]);
+          this.drawRoad(this.roadSprite, points);
         }
       }
     }
-    drawRoad(sprite, { points }, color = "black", width = 1) {
+    _drawRoad(sprite, { points }, color = "black", width = 1) {
       sprite.graphics.drawLines(
         this.getXPos(points[0].x, "center"),
         this.getYPos(points[0].y, "center"),
@@ -485,6 +511,68 @@
         color,
         width
       );
+    }
+    drawRoad(sprite, points, alpha = 1) {
+      const roadsResource = Laya.loader.getRes("resources/map/roads.jpeg");
+      const straightTexture = Texture2.create(roadsResource, 540, 0, 540, 540);
+      const turnTexture = Texture2.create(roadsResource, 0, 540, 540, 540);
+      for (let i = 1; i < points.length - 1; i++) {
+        const x = this.getXPos(points[i].x);
+        const y = this.getYPos(points[i].y);
+        if (points[i + 1].isTurn) {
+          sprite.graphics.drawTexture(
+            turnTexture,
+            x,
+            y,
+            this.gridColumnWidth,
+            this.gridRowHeight,
+            this.getRotateMatrix(this.getTurnAngle(points[i - 1], points[i], points[i + 1]), x, y),
+            alpha
+          );
+          continue;
+        }
+        sprite.graphics.drawTexture(
+          straightTexture,
+          x,
+          y,
+          this.gridColumnWidth,
+          this.gridRowHeight,
+          this.getRotateMatrix(this.getStraightAngle(points[i], points[i + 1]), x, y),
+          alpha
+        );
+      }
+    }
+    getRotateMatrix(angle, x, y) {
+      const matrix = new Laya.Matrix();
+      matrix.translate(-x - this.gridColumnWidth / 2, -y - this.gridRowHeight / 2);
+      matrix.rotate(angle);
+      matrix.translate(x + this.gridColumnWidth / 2, y + this.gridRowHeight / 2);
+      return matrix;
+    }
+    getStraightAngle(start, end) {
+      if (end.x < start.x) {
+        return Math.PI * 3 / 2;
+      }
+      if (end.x > start.x) {
+        return Math.PI / 2;
+      }
+      if (end.y < start.y) {
+        return 0;
+      }
+      return Math.PI;
+    }
+    getTurnAngle(prev, current, next) {
+      if (prev.y < current.y || next.y < current.y) {
+        if (prev.x > current.x || next.x > current.x) {
+          return 0;
+        }
+        return Math.PI * 3 / 2;
+      } else {
+        if (prev.x > current.x || next.x > current.x) {
+          return Math.PI / 2;
+        }
+        return Math.PI;
+      }
     }
     drawBuildings() {
       var _a;
@@ -497,21 +585,31 @@
             building.size(this.gridColumnWidth, this.gridRowHeight);
             building.pos(this.getXPos(x), this.getYPos(y));
             this.buildingSprite.addChild(building);
-            this.map[y][x].sprite = building;
-            building.on("click", () => {
+            building.on("click", () => __async(this, null, function* () {
               if (this.mapInfo.isFinish) {
                 console.log("Game Finish!");
                 return;
               }
+              console.log("heiheihei", this.mapInfo.position, this.map[y][x].id);
               if (this.mapInfo.checkArrival(this.map[y][x].id)) {
+                let count = 0;
+                const len = this.buildingMapper[this.mapInfo.position].targets[this.map[y][x].id].points.length;
+                this.buildingMapper[this.mapInfo.position].targets[this.map[y][x].id].points.map((e) => {
+                  console.log(e.x, e.y);
+                  var tween = Laya.Tween.to(this.characterSprite, { x: this.getXPos(e.x), y: this.getYPos(e.y) }, 200, null, null, count * 200);
+                  count++;
+                });
                 this.mapInfo.positionChange(this.map[y][x].id);
+                yield new Promise((resolve) => {
+                  setTimeout(() => resolve(0), len * 200);
+                });
                 this.highLightRoads(this.map[y][x].id);
-                this.characterSprite.pos(this.getXPos(x), this.getYPos(y));
               }
               if (this.mapInfo.isFinish) {
                 console.log("Game Finish!");
               }
-            });
+            }));
+            this.map[y][x].sprite = building;
           }
         }
       }
@@ -527,36 +625,29 @@
         return;
       }
       for (let target in building.targets) {
-        this.drawRoad(this.highLightRoadSprite, building.targets[target], "black", 5);
+        this.drawRoad(this.highLightRoadSprite, building.targets[target].points);
       }
     }
     calcPointValue(start, end) {
       return Math.abs(start.x - end.x) + Math.abs(start.y - end.y);
     }
-    // (已走 + 预测cost)路径最短 -> 拐弯最少
     getRoadPoints(start, end) {
       if (!start || !end) {
         return [];
       }
-      const queue = [[{ x: start.x, y: start.y, turn: 0 }]];
-      const directions = [[0, 1], [0, -1], [1, 0], [-1, 0]];
-      while (queue.length) {
-        const lastRoad = queue.shift();
-        const [curPoint, prevPoint] = lastRoad;
-        const lastRoadNum = queue.length;
-        let isEnd = false;
+      const directions = [[0, 1], [-1, 0], [0, -1], [1, 0]];
+      const queue = [[__spreadProps(__spreadValues({}, start), { turn: 0, value: this.calcPointValue(start, end) })]];
+      while (queue.length && (queue[0][0].x !== end.x || queue[0][0].y !== end.y)) {
+        const curPoints = queue.shift();
+        const [curPoint, prevPoint] = curPoints;
+        const nextPoints = [];
         for (let i = 0; i < directions.length; i++) {
           const nextPoint = {
             x: curPoint.x + directions[i][0],
             y: curPoint.y + directions[i][1],
             turn: curPoint.turn || 0
           };
-          if (nextPoint.x === end.x && nextPoint.y === end.y) {
-            isEnd = true;
-            queue.unshift([nextPoint, ...lastRoad]);
-            break;
-          }
-          if (nextPoint.x < 0 || nextPoint.y < 0 || nextPoint.x >= this.gridColumns || nextPoint.y >= this.gridRows || this.map[nextPoint.y][nextPoint.x] !== null) {
+          if (nextPoint.x < 0 || nextPoint.y < 0 || nextPoint.x >= this.gridColumns || nextPoint.y >= this.gridRows || curPoints.findIndex((point) => point.x === nextPoint.x && point.y === nextPoint.y) !== -1) {
             continue;
           }
           if (prevPoint) {
@@ -565,15 +656,19 @@
               nextPoint.isTurn = true;
             }
           }
-          nextPoint.value = lastRoad.length + this.calcPointValue(nextPoint, end);
-          queue.unshift([nextPoint, ...lastRoad]);
+          if (this.map[nextPoint.y][nextPoint.x] !== null && (nextPoint.x !== end.x || nextPoint.y !== end.y)) {
+            continue;
+          }
+          nextPoint.value = curPoints.length + this.calcPointValue(end, nextPoint);
+          nextPoints.push(nextPoint);
         }
-        if (isEnd) {
-          break;
-        }
-        if (queue.length !== lastRoadNum) {
+        if (nextPoints.length) {
+          queue.unshift(...nextPoints.map((point) => [point, ...curPoints]));
           queue.sort((a, b) => a[0].value === b[0].value ? a[0].turn - b[0].turn : a[0].value - b[0].value);
         }
+      }
+      if (!queue.length) {
+        return [];
       }
       return queue[0].reverse();
     }
@@ -781,9 +876,11 @@
   // src/Loading.ts
   var { regClass: regClass4 } = Laya;
   var resources = [
-    "resources/tmw_desert_spacing.png",
+    "resources/ground.png",
+    "resources/map/guangzhoutower.png",
     "resources/map/house.png",
-    "resources/map/car.png"
+    "resources/map/car.png",
+    "resources/map/roads.jpeg"
   ];
   var Loading = class extends LoadingBase {
     onAwake() {
@@ -824,20 +921,22 @@
         this.progress.value = 0.95;
       else
         this.progress.value = progress;
-      Laya.Browser.window.wx.config({
-        debug: false,
-        // 是否开启调试模式
-        appId: "your_app_id",
-        // 公众号的唯一标识
-        timestamp: "your_timestamp",
-        // 生成签名的时间戳
-        nonceStr: "your_nonce_str",
-        // 生成签名的随机串
-        signature: "your_signature",
-        // 签名
-        jsApiList: ["your_js_api_list"]
-        // 需要使用的JS接口列表
-      });
+      if (Laya.Browser.onMiniGame) {
+        Laya.Browser.window.wx.config({
+          debug: false,
+          // 是否开启调试模式
+          appId: "your_app_id",
+          // 公众号的唯一标识
+          timestamp: "your_timestamp",
+          // 生成签名的时间戳
+          nonceStr: "your_nonce_str",
+          // 生成签名的随机串
+          signature: "your_signature",
+          // 签名
+          jsApiList: ["your_js_api_list"]
+          // 需要使用的JS接口列表
+        });
+      }
     }
   };
   __name(Loading, "Loading");
