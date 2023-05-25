@@ -7,5 +7,17 @@
   "right": 0,
   "top": 0,
   "bottom": 0,
-  "name": "Scene2D"
+  "name": "Scene2D",
+  "_$child": [
+    {
+      "_$id": "hldxaadr",
+      "_$type": "Animation",
+      "name": "Animation",
+      "x": 522,
+      "y": 274,
+      "width": 100,
+      "height": 100,
+      "interval": 50
+    }
+  ]
 }

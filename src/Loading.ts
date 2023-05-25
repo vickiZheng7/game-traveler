@@ -5,10 +5,8 @@ import { login } from "./login/wx_login";
 
 const resources = [
     "resources/ground.png",
-    "resources/map/guangzhoutower.png",
-    "resources/map/house.png",
-    "resources/map/car.png",
-    "resources/map/roads.jpeg"
+    "resources/map/building.png",
+    "resources/map/car.png"
 ];
   
 @regClass()

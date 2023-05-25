@@ -55,7 +55,27 @@
   };
   __name(IndexBase, "IndexBase");
 
-  // src/ui/Building.ts
+  // src/ui/Building/data.ts
+  var data_default = {
+    "\u897F\u9910\u5385": { x: 0, y: 0 },
+    "\u97F3\u54CD\u5E97": { x: 250, y: 0 },
+    "ktv": { x: 500, y: 0 },
+    "\u9152\u5427": { x: 750, y: 0 },
+    "\u5496\u5561\u5E97": { x: 0, y: 250 },
+    "\u706B\u9505\u5E97": { x: 250, y: 250 },
+    "\u5065\u8EAB\u623F": { x: 500, y: 250 },
+    "\u7535\u5F71\u9662": { x: 750, y: 250 },
+    "\u6E38\u4E50\u56ED": { x: 0, y: 500 },
+    "\u8336\u9986": { x: 250, y: 500 },
+    "\u5DF4\u897F\u70E4\u8089": { x: 500, y: 500 },
+    "\u8C6A\u534E\u6D77\u9C9C\u996D\u5E97": { x: 750, y: 750 },
+    "\u8C6A\u534E\u897F\u9910\u5385": { x: 750, y: 0 },
+    "\u9C9C\u82B1\u5E97": { x: 750, y: 250 },
+    "\u533B\u9662": { x: 750, y: 500 },
+    "\u6D17\u8863\u673A": { x: 750, y: 750 }
+  };
+
+  // src/ui/Building/Index.ts
   var Texture = Laya.Texture;
   var { regClass, property } = Laya;
   var Building = class extends Laya.Sprite {
@@ -66,19 +86,15 @@
       this.draw();
     }
     draw() {
-      let texture;
-      if (Math.ceil(Math.random() * 20) === 1) {
-        texture = Texture.create(Laya.loader.getRes("resources/map/guangzhoutower.png"), 140, 0, 232, 512);
-        this.graphics.drawTexture(texture, 0, -this.height, this.width, this.height * 2);
-      } else {
-        texture = Texture.create(Laya.loader.getRes("resources/map/house.png"), 0, 0, 280, 280);
-        this.graphics.drawTexture(texture, 0, 0, this.width, this.height);
-      }
+      const buildings = Object.values(data_default);
+      const item = buildings[Math.ceil(Math.random() * (buildings.length - 1))];
+      let texture = Texture.create(Laya.loader.getRes("resources/map/building.png"), item.x, item.y, 250, 250);
+      this.graphics.drawTexture(texture, -this.width / 4, -this.height / 4, this.width * 1.5, this.height * 1.5);
     }
   };
   __name(Building, "Building");
   Building = __decorateClass([
-    regClass("4016e768-c3f6-4fd0-bb72-88410b2e9935", "../src/ui/Building.ts")
+    regClass("cacf0a54-d6fe-4266-a93a-5adf7c756bfc", "../src/ui/Building/Index.ts")
   ], Building);
 
   // src/ui/MapBuilder.ts
@@ -486,6 +502,7 @@
     }
     drawMap() {
       this.drawGround();
+      this.drawRoads();
       this.drawBuildings();
       this.drawCharacter();
     }
@@ -499,7 +516,7 @@
       for (let source in this.buildingMapper) {
         for (let target in this.buildingMapper[source].targets) {
           const { points } = this.buildingMapper[source].targets[target];
-          this.drawRoad(this.roadSprite, points);
+          this.drawRoadLine(this.roadSprite, points, "drak");
         }
       }
     }
@@ -541,6 +558,29 @@
           alpha
         );
       }
+    }
+    drawRoadLine(sprite, points, type = "light") {
+      sprite.graphics.drawLines(
+        this.getXPos(points[0].x, "center"),
+        this.getYPos(points[0].y, "center"),
+        points.map((point) => [this.getXPos(point.x - points[0].x), this.getYPos(point.y - points[0].y)]).flat(),
+        type === "light" ? "#a1a1a1" : "#717171",
+        20
+      );
+      sprite.graphics.drawLines(
+        this.getXPos(points[0].x, "center"),
+        this.getYPos(points[0].y, "center"),
+        points.map((point) => [this.getXPos(point.x - points[0].x), this.getYPos(point.y - points[0].y)]).flat(),
+        type === "light" ? "white" : "#dadada",
+        16
+      );
+      sprite.graphics.drawLines(
+        this.getXPos(points[0].x, "center"),
+        this.getYPos(points[0].y, "center"),
+        points.map((point) => [this.getXPos(point.x - points[0].x), this.getYPos(point.y - points[0].y)]).flat(),
+        type === "light" ? "#a1a1a1" : "#717171",
+        12
+      );
     }
     getRotateMatrix(angle, x, y) {
       const matrix = new Laya.Matrix();
@@ -625,7 +665,7 @@
         return;
       }
       for (let target in building.targets) {
-        this.drawRoad(this.highLightRoadSprite, building.targets[target].points);
+        this.drawRoadLine(this.highLightRoadSprite, building.targets[target].points);
       }
     }
     calcPointValue(start, end) {
@@ -877,10 +917,8 @@
   var { regClass: regClass4 } = Laya;
   var resources = [
     "resources/ground.png",
-    "resources/map/guangzhoutower.png",
-    "resources/map/house.png",
-    "resources/map/car.png",
-    "resources/map/roads.jpeg"
+    "resources/map/building.png",
+    "resources/map/car.png"
   ];
   var Loading = class extends LoadingBase {
     onAwake() {
