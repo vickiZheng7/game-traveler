@@ -1,22 +1,30 @@
-const entertainmentImg = "resources/map/entertainment.png";
-
-
-export default {
-    '西餐厅': { x: 0, y: 0 },
-    '音响店': { x: 250, y: 0 },
-    'ktv': { x: 500, y: 0 },
-    '酒吧': { x: 750, y: 0 },
-    '咖啡店': { x: 0, y: 250 },
-    '火锅店': { x: 250, y: 250 },
-    '健身房': { x: 500, y: 250 },
-    '电影院': { x: 750, y: 250 },
-    '游乐园': { x: 0, y: 500 },
-    '茶馆': { x: 250, y: 500 },
-    '巴西烤肉': { x: 500, y: 500 },
-    '豪华海鲜饭店': { x: 750, y: 750 },
-    '豪华西餐厅': { x: 750, y: 0 },
-    '鲜花店': { x: 750, y: 250 },
-    '医院': { x: 750, y: 500 },
-    '洗衣机': { x: 750, y: 750 }
-
+export interface BuildingInfo {
+    name: string;
+    x: number;
+    y: number;
+    /** 默认250 */
+    width?: number;
+    /** 默认250 */
+    height?: number;
 }
+
+export const buildingImage = "resources/map/building.png";
+
+export const buildingInfos: BuildingInfo[] = [
+    { name: '西餐厅', x: 0, y: 0 },
+    { name: '音响店', x: 250, y: 0 },
+    { name: 'ktv', x: 500, y: 0 },
+    { name: '酒吧', x: 750, y: 0 },
+    { name: '咖啡店', x: 0, y: 250 },
+    { name: '火锅店', x: 250, y: 250 },
+    { name: '健身房', x: 500, y: 250 },
+    { name: '电影院', x: 750, y: 250 },
+    { name: '游乐园', x: 0, y: 500 },
+    { name: '茶馆',x: 250, y: 500 },
+    { name: '巴西烤肉', x: 500, y: 500 },
+    { name: '豪华海鲜饭店', x: 750, y: 750 },
+    { name: '豪华西餐厅', x: 750, y: 0 },
+    { name: '鲜花店', x: 750, y: 250 },
+    { name: '医院', x: 750, y: 500 },
+    { name: '洗衣机', x: 750, y: 750 },
+];

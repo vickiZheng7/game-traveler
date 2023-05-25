@@ -56,40 +56,61 @@
   __name(IndexBase, "IndexBase");
 
   // src/ui/Building/data.ts
-  var data_default = {
-    "\u897F\u9910\u5385": { x: 0, y: 0 },
-    "\u97F3\u54CD\u5E97": { x: 250, y: 0 },
-    "ktv": { x: 500, y: 0 },
-    "\u9152\u5427": { x: 750, y: 0 },
-    "\u5496\u5561\u5E97": { x: 0, y: 250 },
-    "\u706B\u9505\u5E97": { x: 250, y: 250 },
-    "\u5065\u8EAB\u623F": { x: 500, y: 250 },
-    "\u7535\u5F71\u9662": { x: 750, y: 250 },
-    "\u6E38\u4E50\u56ED": { x: 0, y: 500 },
-    "\u8336\u9986": { x: 250, y: 500 },
-    "\u5DF4\u897F\u70E4\u8089": { x: 500, y: 500 },
-    "\u8C6A\u534E\u6D77\u9C9C\u996D\u5E97": { x: 750, y: 750 },
-    "\u8C6A\u534E\u897F\u9910\u5385": { x: 750, y: 0 },
-    "\u9C9C\u82B1\u5E97": { x: 750, y: 250 },
-    "\u533B\u9662": { x: 750, y: 500 },
-    "\u6D17\u8863\u673A": { x: 750, y: 750 }
-  };
+  var buildingImage = "resources/map/building.png";
+  var buildingInfos = [
+    { name: "\u897F\u9910\u5385", x: 0, y: 0 },
+    { name: "\u97F3\u54CD\u5E97", x: 250, y: 0 },
+    { name: "ktv", x: 500, y: 0 },
+    { name: "\u9152\u5427", x: 750, y: 0 },
+    { name: "\u5496\u5561\u5E97", x: 0, y: 250 },
+    { name: "\u706B\u9505\u5E97", x: 250, y: 250 },
+    { name: "\u5065\u8EAB\u623F", x: 500, y: 250 },
+    { name: "\u7535\u5F71\u9662", x: 750, y: 250 },
+    { name: "\u6E38\u4E50\u56ED", x: 0, y: 500 },
+    { name: "\u8336\u9986", x: 250, y: 500 },
+    { name: "\u5DF4\u897F\u70E4\u8089", x: 500, y: 500 },
+    { name: "\u8C6A\u534E\u6D77\u9C9C\u996D\u5E97", x: 750, y: 750 },
+    { name: "\u8C6A\u534E\u897F\u9910\u5385", x: 750, y: 0 },
+    { name: "\u9C9C\u82B1\u5E97", x: 750, y: 250 },
+    { name: "\u533B\u9662", x: 750, y: 500 },
+    { name: "\u6D17\u8863\u673A", x: 750, y: 750 }
+  ];
 
   // src/ui/Building/Index.ts
   var Texture = Laya.Texture;
   var { regClass, property } = Laya;
   var Building = class extends Laya.Sprite {
-    constructor() {
+    constructor(x, y, width, height, scale = 1) {
       super();
-      this.width = 40;
-      this.height = 40;
+      this.info = __spreadValues({
+        width: 250,
+        height: 250
+      }, buildingInfos[this.random(0, buildingInfos.length - 1)]);
+      const actualHeight = this.info.height / this.info.width * width;
+      const actualY = y + (height - actualHeight);
+      if (scale === 1) {
+        this.pos(x, actualY);
+        this.size(width, actualHeight);
+      } else {
+        const scaleWidth = width * scale;
+        const scaleHeight = actualHeight * scale;
+        this.pos(x + (scaleWidth - width) / 2, y + (scaleHeight - actualHeight) / 2);
+        this.size(scaleWidth, scaleHeight);
+      }
       this.draw();
     }
     draw() {
-      const buildings = Object.values(data_default);
-      const item = buildings[Math.ceil(Math.random() * (buildings.length - 1))];
-      let texture = Texture.create(Laya.loader.getRes("resources/map/building.png"), item.x, item.y, 250, 250);
-      this.graphics.drawTexture(texture, -this.width / 4, -this.height / 4, this.width * 1.5, this.height * 1.5);
+      let texture = Texture.create(
+        Laya.loader.getRes(buildingImage),
+        this.info.x,
+        this.info.y,
+        this.info.width,
+        this.info.height
+      );
+      this.graphics.drawTexture(texture, 0, 0, this.width, this.height);
+    }
+    random(minNum, maxNum) {
+      return Math.ceil(Math.random() * (maxNum - minNum + 1) + minNum);
     }
   };
   __name(Building, "Building");
@@ -409,8 +430,9 @@
   var Texture2 = Laya.Texture;
   var { regClass: regClass2, property: property2 } = Laya;
   var MapPanel = class extends Laya.Panel {
-    constructor(width, height) {
+    constructor(width, height, padding = 0) {
       super();
+      this.padding = 0;
       // 网格列数
       this.gridColumns = 0;
       // 网格行数
@@ -432,6 +454,7 @@
       this.characterSprite = new Laya.Sprite();
       this.width = width;
       this.height = height;
+      this.padding = padding;
       this.initGrid();
       this.addChild(this.roadSprite);
       this.roadSprite.pos(0, 0);
@@ -445,8 +468,8 @@
     initGrid(rowHeight = 40, columnWidth = 40) {
       this.gridColumnWidth = columnWidth;
       this.gridRowHeight = rowHeight;
-      this.gridRows = Math.floor(this.height / this.gridRowHeight);
-      this.gridColumns = Math.floor(this.width / this.gridColumnWidth);
+      this.gridRows = Math.floor((this.height - this.padding * 2) / this.gridRowHeight);
+      this.gridColumns = Math.floor((this.width - this.padding * 2) / this.gridColumnWidth);
     }
     generate(mapInfo) {
       this.mapInfo = new MapAction();
@@ -514,80 +537,49 @@
     drawRoads() {
       this.roadSprite.graphics.clear();
       for (let source in this.buildingMapper) {
-        for (let target in this.buildingMapper[source].targets) {
-          const { points } = this.buildingMapper[source].targets[target];
-          this.drawRoadLine(this.roadSprite, points, "drak");
-        }
+        this.drawRoadsForBuilding(this.roadSprite, this.buildingMapper[source], "drak");
       }
     }
-    _drawRoad(sprite, { points }, color = "black", width = 1) {
-      sprite.graphics.drawLines(
-        this.getXPos(points[0].x, "center"),
-        this.getYPos(points[0].y, "center"),
-        points.map((point) => [this.getXPos(point.x - points[0].x), this.getYPos(point.y - points[0].y)]).flat(),
-        color,
-        width
-      );
-    }
-    drawRoad(sprite, points, alpha = 1) {
-      const roadsResource = Laya.loader.getRes("resources/map/roads.jpeg");
-      const straightTexture = Texture2.create(roadsResource, 540, 0, 540, 540);
-      const turnTexture = Texture2.create(roadsResource, 0, 540, 540, 540);
-      for (let i = 1; i < points.length - 1; i++) {
-        const x = this.getXPos(points[i].x);
-        const y = this.getYPos(points[i].y);
-        if (points[i + 1].isTurn) {
-          sprite.graphics.drawTexture(
-            turnTexture,
-            x,
-            y,
-            this.gridColumnWidth,
-            this.gridRowHeight,
-            this.getRotateMatrix(this.getTurnAngle(points[i - 1], points[i], points[i + 1]), x, y),
-            alpha
-          );
-          continue;
-        }
-        sprite.graphics.drawTexture(
-          straightTexture,
-          x,
-          y,
-          this.gridColumnWidth,
-          this.gridRowHeight,
-          this.getRotateMatrix(this.getStraightAngle(points[i], points[i + 1]), x, y),
-          alpha
+    drawRoadsForBuilding(sprite, building, type = "light") {
+      if (!(building == null ? void 0 : building.targets)) {
+        return;
+      }
+      const roads = Object.values(building.targets);
+      const roadParameters = roads.reduce((result, road) => {
+        const points = road.points;
+        const parameters = {
+          x: this.getXPos(points[0].x, "center"),
+          y: this.getYPos(points[0].y, "center"),
+          points: points.map((point) => [this.getXDistance(point.x - points[0].x), this.getYDistance(point.y - points[0].y)]).flat()
+        };
+        sprite.graphics.drawLines(
+          parameters.x,
+          parameters.y,
+          parameters.points,
+          type === "light" ? "#a1a1a1" : "#717171",
+          20
         );
-      }
-    }
-    drawRoadLine(sprite, points, type = "light") {
-      sprite.graphics.drawLines(
-        this.getXPos(points[0].x, "center"),
-        this.getYPos(points[0].y, "center"),
-        points.map((point) => [this.getXPos(point.x - points[0].x), this.getYPos(point.y - points[0].y)]).flat(),
-        type === "light" ? "#a1a1a1" : "#717171",
-        20
-      );
-      sprite.graphics.drawLines(
-        this.getXPos(points[0].x, "center"),
-        this.getYPos(points[0].y, "center"),
-        points.map((point) => [this.getXPos(point.x - points[0].x), this.getYPos(point.y - points[0].y)]).flat(),
-        type === "light" ? "white" : "#dadada",
-        16
-      );
-      sprite.graphics.drawLines(
-        this.getXPos(points[0].x, "center"),
-        this.getYPos(points[0].y, "center"),
-        points.map((point) => [this.getXPos(point.x - points[0].x), this.getYPos(point.y - points[0].y)]).flat(),
-        type === "light" ? "#a1a1a1" : "#717171",
-        12
-      );
-    }
-    getRotateMatrix(angle, x, y) {
-      const matrix = new Laya.Matrix();
-      matrix.translate(-x - this.gridColumnWidth / 2, -y - this.gridRowHeight / 2);
-      matrix.rotate(angle);
-      matrix.translate(x + this.gridColumnWidth / 2, y + this.gridRowHeight / 2);
-      return matrix;
+        result.push(parameters);
+        return result;
+      }, []);
+      roadParameters.forEach((parameters) => {
+        sprite.graphics.drawLines(
+          parameters.x,
+          parameters.y,
+          parameters.points,
+          type === "light" ? "white" : "#dadada",
+          16
+        );
+      });
+      roadParameters.forEach((parameters) => {
+        sprite.graphics.drawLines(
+          parameters.x,
+          parameters.y,
+          parameters.points,
+          type === "light" ? "#a1a1a1" : "#717171",
+          12
+        );
+      });
     }
     getStraightAngle(start, end) {
       if (end.x < start.x) {
@@ -621,9 +613,7 @@
       for (let y = 0; y < this.map.length; y++) {
         for (let x = 0; x < this.map[y].length; x++) {
           if (((_a = this.map[y][x]) == null ? void 0 : _a.id) !== void 0) {
-            const building = new Building();
-            building.size(this.gridColumnWidth, this.gridRowHeight);
-            building.pos(this.getXPos(x), this.getYPos(y));
+            const building = new Building(this.getXPos(x), this.getYPos(y), this.gridColumnWidth, this.gridRowHeight);
             this.buildingSprite.addChild(building);
             building.on("click", () => __async(this, null, function* () {
               if (this.mapInfo.isFinish) {
@@ -636,7 +626,7 @@
                 const len = this.buildingMapper[this.mapInfo.position].targets[this.map[y][x].id].points.length;
                 this.buildingMapper[this.mapInfo.position].targets[this.map[y][x].id].points.map((e) => {
                   console.log(e.x, e.y);
-                  var tween = Laya.Tween.to(this.characterSprite, { x: this.getXPos(e.x), y: this.getYPos(e.y) }, 200, null, null, count * 200);
+                  var tween = Laya.Tween.to(this.characterSprite, { x: this.getXDistance(e.x), y: this.getYDistance(e.y) }, 200, null, null, count * 200);
                   count++;
                 });
                 this.mapInfo.positionChange(this.map[y][x].id);
@@ -656,17 +646,11 @@
     }
     drawCharacter() {
       const carTexture = Texture2.create(Laya.loader.getRes("resources/map/car.png"), 0, 0, 330, 230);
-      this.characterSprite.graphics.drawTexture(carTexture, 0, 0, 50, 50);
+      this.characterSprite.graphics.drawTexture(carTexture, this.getXPos(0), this.getYPos(0), this.gridColumnWidth, this.gridRowHeight);
     }
     highLightRoads(id) {
       this.highLightRoadSprite.graphics.clear();
-      const building = this.buildingMapper[id];
-      if (!(building == null ? void 0 : building.targets)) {
-        return;
-      }
-      for (let target in building.targets) {
-        this.drawRoadLine(this.highLightRoadSprite, building.targets[target].points);
-      }
+      this.drawRoadsForBuilding(this.roadSprite, this.buildingMapper[id], "light");
     }
     calcPointValue(start, end) {
       return Math.abs(start.x - end.x) + Math.abs(start.y - end.y);
@@ -715,17 +699,23 @@
     getRandom(n, m) {
       return Math.floor(Math.random() * (m - n + 1) + n);
     }
+    getXDistance(x) {
+      return x * this.gridColumnWidth;
+    }
+    getYDistance(y) {
+      return y * this.gridRowHeight;
+    }
     getXPos(x, placement) {
       if (placement === "center") {
-        return (x + 0.5) * this.gridColumnWidth;
+        return (x + 0.5) * this.gridColumnWidth + this.padding;
       }
-      return x * this.gridColumnWidth;
+      return x * this.gridColumnWidth + this.padding;
     }
     getYPos(y, placement) {
       if (placement === "center") {
-        return (y + 0.5) * this.gridRowHeight;
+        return (y + 0.5) * this.gridRowHeight + this.padding;
       }
-      return y * this.gridRowHeight;
+      return y * this.gridRowHeight + this.padding;
     }
   };
   __name(MapPanel, "MapPanel");
@@ -807,7 +797,7 @@
         this.lastMapInfo = LocalStorage.getItem(this.openid);
       }
       console.log("onOpened: " + this.openid + " " + this.lastMapInfo);
-      this.map = new MapPanel(1136, 640);
+      this.map = new MapPanel(1136, 640, 10);
       this.map.generate(this.lastMapInfo);
       this.addChild(this.map);
     }
