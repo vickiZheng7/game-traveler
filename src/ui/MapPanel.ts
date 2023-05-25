@@ -1,4 +1,4 @@
-import { Building } from "./Building";
+import { Building } from "./Building/Index";
 import Texture = Laya.Texture;
 import MapAction from "./MapAction";
 import { MyDialog } from "./dialog";
@@ -159,7 +159,7 @@ export class MapPanel extends Laya.Panel {
         for (let source in this.buildingMapper) {
             for (let target in this.buildingMapper[source].targets) {
                 const { points } = this.buildingMapper[source].targets[target];
-                this.drawRoad(this.roadSprite, points);
+                this.drawRoadLine(this.roadSprite, points, 'drak');
             }
         }
     }
@@ -207,6 +207,29 @@ export class MapPanel extends Laya.Panel {
                 alpha
             )
         }
+    }
+    drawRoadLine(sprite: Laya.Sprite, points: IRoadPoint[], type = "light") {
+        sprite.graphics.drawLines(
+            this.getXPos(points[0].x, 'center'),
+            this.getYPos(points[0].y, 'center'),
+            points.map(point => [this.getXPos(point.x - points[0].x), this.getYPos(point.y - points[0].y)]).flat(),
+            type === 'light' ? '#a1a1a1' : '#717171',
+            20
+        );
+        sprite.graphics.drawLines(
+            this.getXPos(points[0].x, 'center'),
+            this.getYPos(points[0].y, 'center'),
+            points.map(point => [this.getXPos(point.x - points[0].x), this.getYPos(point.y - points[0].y)]).flat(),
+            type === 'light' ? 'white' : '#dadada',
+            16
+        );
+        sprite.graphics.drawLines(
+            this.getXPos(points[0].x, 'center'),
+            this.getYPos(points[0].y, 'center'),
+            points.map(point => [this.getXPos(point.x - points[0].x), this.getYPos(point.y - points[0].y)]).flat(),
+            type === 'light' ? '#a1a1a1' : '#717171',
+            12
+        );
     }
 
     getRotateMatrix(angle: number, x: number, y: number) {
@@ -300,7 +323,7 @@ export class MapPanel extends Laya.Panel {
             return;
         }
         for (let target in building.targets) {
-            this.drawRoad(this.highLightRoadSprite, building.targets[target].points);
+            this.drawRoadLine(this.highLightRoadSprite, building.targets[target].points);
         }
     }
 
