@@ -26,6 +26,7 @@ type IMapPoint = IBuilding;
 
 @regClass()
 export class MapPanel extends Laya.Panel {
+    private padding: number = 0;
     // 网格列数
     private gridColumns: number = 0;
     // 网格行数
@@ -47,10 +48,11 @@ export class MapPanel extends Laya.Panel {
     private characterSprite: Laya.Sprite = new Laya.Sprite();
 
 
-    constructor(width: number, height: number) {
+    constructor(width: number, height: number, padding: number = 0) {
         super();
         this.width = width;
         this.height = height;
+        this.padding = padding;
         this.initGrid();
         this.addChild(this.roadSprite);
         this.roadSprite.pos(0, 0);
@@ -60,14 +62,13 @@ export class MapPanel extends Laya.Panel {
         this.buildingSprite.pos(0, 0);
         this.addChild(this.characterSprite);
         this.characterSprite.pos(0, 0);
-
     }
 
     initGrid(rowHeight = 40, columnWidth = 40) {
         this.gridColumnWidth = columnWidth;
         this.gridRowHeight = rowHeight;
-        this.gridRows = Math.floor(this.height / this.gridRowHeight);
-        this.gridColumns = Math.floor(this.width / this.gridColumnWidth);
+        this.gridRows = Math.floor((this.height - this.padding * 2) / this.gridRowHeight);
+        this.gridColumns = Math.floor((this.width - this.padding * 2) / this.gridColumnWidth);
     }
 
     generate(mapInfo: MapAction): void {
@@ -157,87 +158,50 @@ export class MapPanel extends Laya.Panel {
         this.roadSprite.graphics.clear();
         // 路径绘制
         for (let source in this.buildingMapper) {
-            for (let target in this.buildingMapper[source].targets) {
-                const { points } = this.buildingMapper[source].targets[target];
-                this.drawRoadLine(this.roadSprite, points, 'drak');
-            }
+            this.drawRoadsForBuilding(this.roadSprite, this.buildingMapper[source], 'drak');
         }
     }
 
-    _drawRoad(sprite: Laya.Sprite, { points }: IRoad, color: any = 'black', width: number = 1) {
-        sprite.graphics.drawLines(
-            this.getXPos(points[0].x, 'center'),
-            this.getYPos(points[0].y, 'center'),
-            points.map(point => [this.getXPos(point.x - points[0].x), this.getYPos(point.y - points[0].y)]).flat(),
-            color,
-            width
-        );
-    }
-
-    drawRoad(sprite: Laya.Sprite, points: IRoadPoint[], alpha: number = 1) {
-        // 1. 加载素材图
-        const roadsResource = Laya.loader.getRes("resources/map/roads.jpeg");
-        // 2. 截取纹理图
-        const straightTexture = Texture.create(roadsResource, 540, 0, 540, 540);
-        const turnTexture = Texture.create(roadsResource, 0, 540, 540, 540);
-        for (let i = 1; i < points.length - 1; i++) {
-            // 1. 如果是拐弯
-            const x = this.getXPos(points[i].x);
-            const y = this.getYPos(points[i].y);
-            if (points[i + 1].isTurn) {
-                sprite.graphics.drawTexture(
-                    turnTexture,
-                    x,
-                    y,
-                    this.gridColumnWidth,
-                    this.gridRowHeight,
-                    this.getRotateMatrix(this.getTurnAngle(points[i - 1], points[i], points[i + 1]), x, y),
-                    alpha
-                )
-                continue;
-            }
-            // 2. 如果是直行
-            sprite.graphics.drawTexture(
-                straightTexture,
-                x,
-                y,
-                this.gridColumnWidth,
-                this.gridRowHeight,
-                this.getRotateMatrix(this.getStraightAngle(points[i], points[i + 1]), x, y),
-                alpha
-            )
+    drawRoadsForBuilding(sprite: Laya.Sprite, building: IBuilding, type = 'light') {
+        if (!building?.targets) {
+            return;
         }
-    }
-    drawRoadLine(sprite: Laya.Sprite, points: IRoadPoint[], type = "light") {
-        sprite.graphics.drawLines(
-            this.getXPos(points[0].x, 'center'),
-            this.getYPos(points[0].y, 'center'),
-            points.map(point => [this.getXPos(point.x - points[0].x), this.getYPos(point.y - points[0].y)]).flat(),
-            type === 'light' ? '#a1a1a1' : '#717171',
-            20
-        );
-        sprite.graphics.drawLines(
-            this.getXPos(points[0].x, 'center'),
-            this.getYPos(points[0].y, 'center'),
-            points.map(point => [this.getXPos(point.x - points[0].x), this.getYPos(point.y - points[0].y)]).flat(),
-            type === 'light' ? 'white' : '#dadada',
-            16
-        );
-        sprite.graphics.drawLines(
-            this.getXPos(points[0].x, 'center'),
-            this.getYPos(points[0].y, 'center'),
-            points.map(point => [this.getXPos(point.x - points[0].x), this.getYPos(point.y - points[0].y)]).flat(),
-            type === 'light' ? '#a1a1a1' : '#717171',
-            12
-        );
-    }
-
-    getRotateMatrix(angle: number, x: number, y: number) {
-        const matrix = new Laya.Matrix();
-        matrix.translate(- x - this.gridColumnWidth / 2, - y - this.gridRowHeight / 2);
-        matrix.rotate(angle);
-        matrix.translate(x + this.gridColumnWidth / 2, y + this.gridRowHeight / 2);
-        return matrix;
+        const roads = Object.values(building.targets);
+        const roadParameters = roads.reduce((result, road) => {
+            const points = road.points;
+            const parameters = {
+                x: this.getXPos(points[0].x, 'center'),
+                y: this.getYPos(points[0].y, 'center'),
+                points: points.map(point => [this.getXDistance(point.x - points[0].x), this.getYDistance(point.y - points[0].y)]).flat()
+            };
+            sprite.graphics.drawLines(
+                parameters.x,
+                parameters.y,
+                parameters.points,
+                type === 'light' ? '#a1a1a1' : '#717171',
+                20
+            );
+            result.push(parameters);
+            return result;
+        }, []);
+        roadParameters.forEach((parameters) => {
+            sprite.graphics.drawLines(
+                parameters.x,
+                parameters.y,
+                parameters.points,
+                type === 'light' ? 'white' : '#dadada',
+                16
+            );
+        });
+        roadParameters.forEach((parameters) => {
+            sprite.graphics.drawLines(
+                parameters.x,
+                parameters.y,
+                parameters.points,
+                type === 'light' ? '#a1a1a1' : '#717171',
+                12
+            );
+        });
     }
 
     getStraightAngle(start: IRoadPoint, end: IRoadPoint): number {
@@ -277,9 +241,7 @@ export class MapPanel extends Laya.Panel {
         for (let y = 0; y < this.map.length; y++) {
             for (let x = 0; x < this.map[y].length; x++) {
                 if (this.map[y][x]?.id !== undefined) {
-                    const building = new Building();
-                    building.size(this.gridColumnWidth, this.gridRowHeight);
-                    building.pos(this.getXPos(x), this.getYPos(y));
+                    const building = new Building(this.getXPos(x), this.getYPos(y), this.gridColumnWidth, this.gridRowHeight);
                     this.buildingSprite.addChild(building);
                     building.on('click', async () => {
                         // const pop = new MyDialog('test');
@@ -294,7 +256,7 @@ export class MapPanel extends Laya.Panel {
                             const len = this.buildingMapper[this.mapInfo.position].targets[this.map[y][x].id].points.length;
                             this.buildingMapper[this.mapInfo.position].targets[this.map[y][x].id].points.map(e => {
                                 console.log(e.x, e.y)
-                                var tween = Laya.Tween.to(this.characterSprite, { x: this.getXPos(e.x), y: this.getYPos(e.y) }, 200, null, null, count * 200);
+                                var tween = Laya.Tween.to(this.characterSprite, { x: this.getXDistance(e.x), y: this.getYDistance(e.y) }, 200, null, null, count * 200);
                                 count++;
                             })
                             this.mapInfo.positionChange(this.map[y][x].id);
@@ -313,18 +275,12 @@ export class MapPanel extends Laya.Panel {
     }
     drawCharacter() {
         const carTexture: Texture = Texture.create(Laya.loader.getRes("resources/map/car.png"), 0, 0, 330, 230);
-        this.characterSprite.graphics.drawTexture(carTexture, 0, 0, 50, 50);
+        this.characterSprite.graphics.drawTexture(carTexture, this.getXPos(0), this.getYPos(0), this.gridColumnWidth, this.gridRowHeight);
     }
     highLightRoads(id: number | string) {
         // 清除历史痕迹
         this.highLightRoadSprite.graphics.clear();
-        const building = this.buildingMapper[id];
-        if (!building?.targets) {
-            return;
-        }
-        for (let target in building.targets) {
-            this.drawRoadLine(this.highLightRoadSprite, building.targets[target].points);
-        }
+        this.drawRoadsForBuilding(this.roadSprite, this.buildingMapper[id], 'light');
     }
 
     calcPointValue(start: IPos, end: IPos): number {
@@ -388,17 +344,24 @@ export class MapPanel extends Laya.Panel {
         return Math.floor(Math.random() * (m - n + 1) + n);
     }
 
+    getXDistance(x: number) {
+        return x * this.gridColumnWidth;
+    }
+    getYDistance(y: number) {
+        return y * this.gridRowHeight;
+    }
+
     getXPos(x: number, placement?: 'center') {
         if (placement === 'center') {
-            return (x + 0.5) * this.gridColumnWidth;
+            return (x + 0.5) * this.gridColumnWidth + this.padding;
         }
-        return x * this.gridColumnWidth;
+        return x * this.gridColumnWidth + this.padding;
     }
 
     getYPos(y: number, placement?: 'center') {
         if (placement === 'center') {
-            return (y + 0.5) * this.gridRowHeight;
+            return (y + 0.5) * this.gridRowHeight + this.padding;
         }
-        return y * this.gridRowHeight;
+        return y * this.gridRowHeight + this.padding;
     }
 }

@@ -76,7 +76,7 @@ export class Index extends IndexBase {
         }
         console.log("onOpened: " + this.openid + " " + this.lastMapInfo);
         // 1. 初始化地图
-        this.map = new MapPanel(1136, 640);
+        this.map = new MapPanel(1136, 640, 10);
         this.map.generate(this.lastMapInfo);
         this.addChild(this.map);
         // 2. 鼠标交互
