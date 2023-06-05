@@ -69,10 +69,10 @@
     { name: "\u6E38\u4E50\u56ED", x: 0, y: 500 },
     { name: "\u8336\u9986", x: 250, y: 500 },
     { name: "\u5DF4\u897F\u70E4\u8089", x: 500, y: 500 },
-    { name: "\u8C6A\u534E\u6D77\u9C9C\u996D\u5E97", x: 750, y: 750 },
-    { name: "\u8C6A\u534E\u897F\u9910\u5385", x: 750, y: 0 },
-    { name: "\u9C9C\u82B1\u5E97", x: 750, y: 250 },
-    { name: "\u533B\u9662", x: 750, y: 500 },
+    { name: "\u8C6A\u534E\u6D77\u9C9C\u996D\u5E97", x: 750, y: 500 },
+    { name: "\u8C6A\u534E\u897F\u9910\u5385", x: 0, y: 750 },
+    { name: "\u9C9C\u82B1\u5E97", x: 250, y: 750 },
+    { name: "\u533B\u9662", x: 500, y: 750 },
     { name: "\u6D17\u8863\u673A", x: 750, y: 750 }
   ];
 
@@ -110,7 +110,7 @@
       this.graphics.drawTexture(texture, 0, 0, this.width, this.height);
     }
     random(minNum, maxNum) {
-      return Math.ceil(Math.random() * (maxNum - minNum + 1) + minNum);
+      return Math.ceil(Math.random() * (maxNum - minNum) + minNum);
     }
   };
   __name(Building, "Building");
@@ -623,15 +623,14 @@
               console.log("heiheihei", this.mapInfo.position, this.map[y][x].id);
               if (this.mapInfo.checkArrival(this.map[y][x].id)) {
                 let count = 0;
-                const len = this.buildingMapper[this.mapInfo.position].targets[this.map[y][x].id].points.length;
-                this.buildingMapper[this.mapInfo.position].targets[this.map[y][x].id].points.map((e) => {
-                  console.log(e.x, e.y);
+                const target = this.buildingMapper[this.mapInfo.position].targets[this.map[y][x].id];
+                target.points.map((e) => {
                   var tween = Laya.Tween.to(this.characterSprite, { x: this.getXDistance(e.x), y: this.getYDistance(e.y) }, 200, null, null, count * 200);
                   count++;
                 });
                 this.mapInfo.positionChange(this.map[y][x].id);
                 yield new Promise((resolve) => {
-                  setTimeout(() => resolve(0), len * 200);
+                  setTimeout(() => resolve(0), target.points.length * 200);
                 });
                 this.highLightRoads(this.map[y][x].id);
               }

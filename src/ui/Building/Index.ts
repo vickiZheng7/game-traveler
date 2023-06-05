@@ -46,6 +46,6 @@ export class Building extends Laya.Sprite {
     }
 
     random(minNum: number, maxNum: number): number {
-        return Math.ceil(Math.random() * (maxNum - minNum + 1) + minNum);
+        return Math.ceil(Math.random() * (maxNum - minNum) + minNum);
     }
 }
